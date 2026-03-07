@@ -1,256 +1,173 @@
-type Movie = {
-  Title: string
-  Year: string
+type OMDbMovie = {
   imdbID: string
+  Title: string
 }
 
-type OMDbResponse = {
-  Search?: Movie[]
+type OMDbSearchResponse = {
+  Search?: OMDbMovie[]
+  totalResults?: string
   Response: string
+  Error?: string
 }
 
-type MovieDetails = {
+type OMDbDetail = {
   Title: string
   Year: string
   Rated: string
-  Released: string
   Runtime: string
   Genre: string
   Director: string
-  Writer: string
   Actors: string
   Plot: string
-  Language: string
   Country: string
   Awards: string
-  Ratings: Array<{
-    Source: string
-    Value: string
-  }>
-  Metascore: string
-  imdbRating: string
-  imdbVotes: string
-  Type: string
   BoxOffice?: string
-  Production?: string
-  Website?: string
+  Ratings: Array<{ Source: string; Value: string }>
   Response: string
 }
 
-const input = document.getElementById("search") as HTMLInputElement
-const results = document.getElementById("results") as HTMLUListElement
+const searchInput    = document.getElementById("search")          as HTMLInputElement
+const btnSearch      = document.getElementById("btn-search")      as HTMLButtonElement
+const resultsEl      = document.getElementById("results")         as HTMLUListElement
 const detailsSection = document.getElementById("details-section") as HTMLDivElement
-const movieDetails = document.getElementById("movie-details") as HTMLDivElement
-const closeBtn = document.getElementById("close-details") as HTMLButtonElement
+const movieDetailsEl = document.getElementById("movie-details")   as HTMLDivElement
+const closeBtn       = document.getElementById("close-details")   as HTMLButtonElement
+const resultCountEl  = document.getElementById("result-count")    as HTMLSpanElement
+const statusEl       = document.getElementById("status-msg")      as HTMLDivElement
+
+const API_KEY = "trilogy"
+const BASE    = "https://www.omdbapi.com/"
 
 let currentSelectedLi: HTMLLIElement | null = null
 
-function searchMovies(query: string): void {
-  results.innerHTML = "<li>Carregando...</li>"
-  
-  // Limpar detalhes ao fazer nova busca
+async function searchMovies(query: string): Promise<void> {
+  setStatus("Buscando...", false)
+  resultsEl.innerHTML = ""
+  resultCountEl.textContent = ""
   hideDetails()
 
-  fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(query)}&apikey=trilogy`)
-    .then(response => response.json())
-    .then((data: OMDbResponse) => {
-      console.log('Resposta da API:', data)
-      
-      if (!data.Search || data.Response === "False") {
-        results.innerHTML = "<li>Nenhum filme encontrado</li>"
-        return
-      }
+  try {
+    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`)
+    const data1: OMDbSearchResponse = await res1.json()
 
-      results.innerHTML = ""
+    if (data1.Response === "False" || !data1.Search) {
+      setStatus(data1.Error ?? "Nenhum resultado encontrado.", true)
+      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`
+      return
+    }
 
-      data.Search.forEach((movie: Movie) => {
-        const li = document.createElement("li")
-        li.textContent = `${movie.Title} (${movie.Year})`
-        li.dataset.imdbId = movie.imdbID
-        
-        li.addEventListener("click", () => {
-          // Remover classe active do item anterior
-          if (currentSelectedLi) {
-            currentSelectedLi.classList.remove("active")
-          }
-          
-          // Adicionar classe active ao item clicado
-          li.classList.add("active")
-          currentSelectedLi = li
-          
-          loadMovieDetails(movie.imdbID)
-        })
-        
-        results.appendChild(li)
-      })
-    })
-    .catch((error) => {
-      console.error('Erro:', error)
-      results.innerHTML = "<li>Erro ao buscar filmes. Tente novamente.</li>"
-    })
+    let allMovies: OMDbMovie[] = [...data1.Search]
+    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50)
+    const pages = Math.ceil(total / 10)
+
+    const extras = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+          .then(r => r.json() as Promise<OMDbSearchResponse>)
+      )
+    )
+    for (const p of extras) if (p.Search) allMovies.push(...p.Search)
+
+    setStatus(`Filtrando ${allMovies.length} resultados...`, false)
+
+    const details = await Promise.all(
+      allMovies.map(m =>
+        fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json() as Promise<OMDbDetail>)
+      )
+    )
+
+    const scifi = details.filter(d =>
+      d.Response === "True" && d.Genre?.toLowerCase().includes("sci-fi")
+    )
+
+    if (scifi.length === 0) {
+      setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", true)
+      resultsEl.innerHTML = `<li class="empty-state">Sem resultados Sci-Fi.</li>`
+      resultCountEl.textContent = ""
+      return
+    }
+
+    setStatus("", false)
+    resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`
+    renderResults(scifi)
+
+  } catch (err) {
+    console.error(err)
+    setStatus("Erro de conexão.", true)
+  }
 }
 
-function loadMovieDetails(imdbID: string): void {
-  movieDetails.innerHTML = "<p class='loading'>Carregando detalhes...</p>"
+function renderResults(movies: OMDbDetail[]): void {
+  resultsEl.innerHTML = ""
+  movies.forEach(movie => {
+    const li = document.createElement("li")
+    li.innerHTML = `
+      <div class="movie-title">${movie.Title}</div>
+      <div class="movie-meta">${movie.Year} · ${movie.Runtime} · ${movie.Genre}</div>
+    `
+    li.addEventListener("click", () => {
+      if (currentSelectedLi) currentSelectedLi.classList.remove("active")
+      li.classList.add("active")
+      currentSelectedLi = li
+      displayDetails(movie)
+    })
+    resultsEl.appendChild(li)
+  })
+}
+
+function field(label: string, value: string): string {
+  if (!value || value === "N/A") return ""
+  return `<div class="detail-block">
+    <span class="detail-label">${label}</span>
+    <p class="detail-value">${value}</p>
+  </div>`
+}
+
+function displayDetails(movie: OMDbDetail): void {
   detailsSection.classList.remove("hidden")
+  const placeholder = detailsSection.querySelector(".details-placeholder") as HTMLElement
+  placeholder.style.display = "none"
 
-  fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=trilogy&plot=full`)
-    .then(response => response.json())
-    .then((data: MovieDetails) => {
-      console.log('Detalhes do filme:', data)
-      
-      if (data.Response === "False") {
-        movieDetails.innerHTML = "<p>Não foi possível carregar os detalhes.</p>"
-        return
-      }
+  const ratings = movie.Ratings?.map(r => `
+    <div class="rating-chip">
+      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
+      <span class="rating-value">${r.Value}</span>
+    </div>`).join("") ?? ""
 
-      displayMovieDetails(data)
-    })
-    .catch((error) => {
-      console.error('Erro ao carregar detalhes:', error)
-      movieDetails.innerHTML = "<p>Erro ao carregar detalhes. Tente novamente.</p>"
-    })
-}
-
-function displayMovieDetails(movie: MovieDetails): void {
-  let html = `
+  movieDetailsEl.innerHTML = `
     <h3 class="detail-title">${movie.Title}</h3>
-    <div class="detail-year">${movie.Year} • ${movie.Runtime} • ${movie.Rated}</div>
+    <div class="detail-meta-row">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
+    ${field("Sinopse",   movie.Plot)}
+    ${field("Diretor",   movie.Director)}
+    ${field("Elenco",    movie.Actors)}
+    ${field("Gênero",    movie.Genre)}
+    ${movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+    ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
+    ${ratings ? `<div class="detail-block">
+      <span class="detail-label">Avaliações</span>
+      <div class="ratings-row">${ratings}</div>
+    </div>` : ""}
   `
-
-  if (movie.Plot && movie.Plot !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Sinopse</span>
-        <p class="detail-value">${movie.Plot}</p>
-      </div>
-    `
-  }
-
-  if (movie.Genre && movie.Genre !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Gênero</span>
-        <p class="detail-value">${movie.Genre}</p>
-      </div>
-    `
-  }
-
-  if (movie.Director && movie.Director !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Diretor</span>
-        <p class="detail-value">${movie.Director}</p>
-      </div>
-    `
-  }
-
-  if (movie.Writer && movie.Writer !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Roteirista</span>
-        <p class="detail-value">${movie.Writer}</p>
-      </div>
-    `
-  }
-
-  if (movie.Actors && movie.Actors !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Elenco</span>
-        <p class="detail-value">${movie.Actors}</p>
-      </div>
-    `
-  }
-
-  if (movie.Awards && movie.Awards !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Prêmios</span>
-        <p class="detail-value">${movie.Awards}</p>
-      </div>
-    `
-  }
-
-  if (movie.BoxOffice && movie.BoxOffice !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Bilheteria</span>
-        <p class="detail-value">${movie.BoxOffice}</p>
-      </div>
-    `
-  }
-
-  if (movie.Language && movie.Language !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Idioma</span>
-        <p class="detail-value">${movie.Language}</p>
-      </div>
-    `
-  }
-
-  if (movie.Country && movie.Country !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">País</span>
-        <p class="detail-value">${movie.Country}</p>
-      </div>
-    `
-  }
-
-  // Avaliações
-  if (movie.Ratings && movie.Ratings.length > 0) {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">Avaliações</span>
-        <div class="rating-container">
-    `
-    
-    movie.Ratings.forEach(rating => {
-      html += `
-        <div class="rating-item">
-          <span class="rating-source">${rating.Source}</span>
-          <span class="rating-value">${rating.Value}</span>
-        </div>
-      `
-    })
-    
-    html += `
-        </div>
-      </div>
-    `
-  }
-
-  // Adicionar IMDb info se disponível
-  if (movie.imdbRating && movie.imdbRating !== "N/A") {
-    html += `
-      <div class="detail-section">
-        <span class="detail-label">IMDb</span>
-        <p class="detail-value">${movie.imdbRating}/10 (${movie.imdbVotes} votos)</p>
-      </div>
-    `
-  }
-
-  movieDetails.innerHTML = html
 }
 
 function hideDetails(): void {
   detailsSection.classList.add("hidden")
-  if (currentSelectedLi) {
-    currentSelectedLi.classList.remove("active")
-    currentSelectedLi = null
-  }
+  const placeholder = detailsSection.querySelector(".details-placeholder") as HTMLElement
+  placeholder.style.display = ""
+  movieDetailsEl.innerHTML = ""
+  if (currentSelectedLi) { currentSelectedLi.classList.remove("active"); currentSelectedLi = null }
 }
 
-// Event listeners
-input.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return
-  
-  const query = input.value.trim()
-  if (!query) return
-  
-  searchMovies(query)
-})
+function setStatus(msg: string, isError: boolean): void {
+  statusEl.textContent = msg
+  statusEl.className = isError ? "error" : ""
+}
 
+function doSearch(): void {
+  const q = searchInput.value.trim()
+  if (q) searchMovies(q)
+}
+
+btnSearch.addEventListener("click", doSearch)
+searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch() })
 closeBtn.addEventListener("click", hideDetails)

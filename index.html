@@ -4,25 +4,45 @@
 <head>
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>🎬 movie-api</title>
-     <link rel="stylesheet" href="./styles/main.css" />
+     <title>Sci-Fi MOV API</title>
+     <link rel="stylesheet" href="main.css" />
 </head>
 
 <body>
-     <h1>🎬 devgbr86.github.io/movie-api</h1>
-     <p style="padding-bottom: 25px; text-align: center;">Movie Search<br>[Stack: HTML+CSS+JS+API+TypeScript]</p>
-     <input id="search" type="text" placeholder="🔎 Pesquisar" />
 
-     <div class="container">
-          <div class="results-section">
-               <h2>Resultados</h2>
-               <ul id="results"></ul>
+     <header>
+          <span class="logo-title">🛸 Sci-Fi <em>MOV API</em></span>
+          <span class="header-sub">Busca de filmes de ficção científica · OMDb API</span>
+     </header>
+
+     <div class="search-area">
+          <h2>Pesquisar filmes Sci-Fi</h2>
+          <div class="search-row">
+               <input id="search" type="text" placeholder="Ex: space, robot, future, blade runner..."
+                    autocomplete="off" />
+               <button class="btn-search" id="btn-search">Pesquisar</button>
+          </div>
+          <div id="status-msg"></div>
+     </div>
+
+     <div class="content">
+
+          <div class="results-col">
+               <div class="results-header">
+                    <h3>Resultados</h3>
+                    <span id="result-count"></span>
+               </div>
+               <ul id="results">
+                    <li class="empty-state">Digite um termo e pressione Pesquisar.</li>
+               </ul>
           </div>
 
-          <div id="details-section" class="details-section hidden">
-               <button id="close-details" class="close-btn">✕</button>
+          <div id="details-section" class="details-panel hidden">
+               <div class="details-placeholder">Selecione um filme para ver os detalhes.</div>
+               <button id="close-details">✕</button>
                <div id="movie-details"></div>
           </div>
+
      </div>
 
      <script type="module" src="./dist/main.js"></script>

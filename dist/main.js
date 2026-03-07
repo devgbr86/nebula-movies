@@ -1,185 +1,154 @@
 "use strict";
-const input = document.getElementById("search");
-const results = document.getElementById("results");
+
+const searchInput    = document.getElementById("search");
+const btnSearch      = document.getElementById("btn-search");
+const resultsEl      = document.getElementById("results");
 const detailsSection = document.getElementById("details-section");
-const movieDetails = document.getElementById("movie-details");
-const closeBtn = document.getElementById("close-details");
+const movieDetailsEl = document.getElementById("movie-details");
+const closeBtn       = document.getElementById("close-details");
+const resultCountEl  = document.getElementById("result-count");
+const statusEl       = document.getElementById("status-msg");
+
+const API_KEY = "trilogy";
+const BASE    = "https://www.omdbapi.com/";
+
 let currentSelectedLi = null;
-function searchMovies(query) {
-    results.innerHTML = "<li>Carregando...</li>";
-    // Limpar detalhes ao fazer nova busca
-    hideDetails();
-    fetch(`https://www.omdbapi.com/?s=${encodeURIComponent(query)}&apikey=trilogy`)
-        .then(response => response.json())
-        .then((data) => {
-        console.log('Resposta da API:', data);
-        if (!data.Search || data.Response === "False") {
-            results.innerHTML = "<li>Nenhum filme encontrado</li>";
-            return;
-        }
-        results.innerHTML = "";
-        data.Search.forEach((movie) => {
-            const li = document.createElement("li");
-            li.textContent = `${movie.Title} (${movie.Year})`;
-            li.dataset.imdbId = movie.imdbID;
-            li.addEventListener("click", () => {
-                // Remover classe active do item anterior
-                if (currentSelectedLi) {
-                    currentSelectedLi.classList.remove("active");
-                }
-                // Adicionar classe active ao item clicado
-                li.classList.add("active");
-                currentSelectedLi = li;
-                loadMovieDetails(movie.imdbID);
-            });
-            results.appendChild(li);
-        });
-    })
-        .catch((error) => {
-        console.error('Erro:', error);
-        results.innerHTML = "<li>Erro ao buscar filmes. Tente novamente.</li>";
-    });
+
+async function searchMovies(query) {
+  if (!query.trim()) return;
+
+  setStatus("Buscando...", "");
+  resultsEl.innerHTML = "";
+  resultCountEl.textContent = "";
+  hideDetails();
+
+  try {
+    // Page 1
+    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`);
+    const data1 = await res1.json();
+
+    if (data1.Response === "False" || !data1.Search) {
+      setStatus(data1.Error ?? "Nenhum resultado encontrado.", "error");
+      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`;
+      return;
+    }
+
+    let allMovies = [...data1.Search];
+    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
+    const pages = Math.ceil(total / 10);
+
+    // Remaining pages in parallel
+    const extras = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+          .then(r => r.json())
+      )
+    );
+    for (const p of extras) if (p.Search) allMovies.push(...p.Search);
+
+    setStatus(`Filtrando ${allMovies.length} resultados...`, "");
+
+    // Fetch full details for all in parallel
+    const details = await Promise.all(
+      allMovies.map(m =>
+        fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json())
+      )
+    );
+
+    // Keep only Sci-Fi
+    const scifi = details.filter(d =>
+      d.Response === "True" && d.Genre?.toLowerCase().includes("sci-fi")
+    );
+
+    if (scifi.length === 0) {
+      setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", "error");
+      resultsEl.innerHTML = `<li class="empty-state">Sem resultados Sci-Fi.</li>`;
+      resultCountEl.textContent = "";
+      return;
+    }
+
+    setStatus("", "");
+    resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`;
+    renderResults(scifi);
+
+  } catch (err) {
+    console.error(err);
+    setStatus("Erro de conexão.", "error");
+  }
 }
-function loadMovieDetails(imdbID) {
-    movieDetails.innerHTML = "<p class='loading'>Carregando detalhes...</p>";
-    detailsSection.classList.remove("hidden");
-    fetch(`https://www.omdbapi.com/?i=${imdbID}&apikey=trilogy&plot=full`)
-        .then(response => response.json())
-        .then((data) => {
-        console.log('Detalhes do filme:', data);
-        if (data.Response === "False") {
-            movieDetails.innerHTML = "<p>Não foi possível carregar os detalhes.</p>";
-            return;
-        }
-        displayMovieDetails(data);
-    })
-        .catch((error) => {
-        console.error('Erro ao carregar detalhes:', error);
-        movieDetails.innerHTML = "<p>Erro ao carregar detalhes. Tente novamente.</p>";
+
+function renderResults(movies) {
+  resultsEl.innerHTML = "";
+  movies.forEach(movie => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div class="movie-title">${movie.Title}</div>
+      <div class="movie-meta">${movie.Year} · ${movie.Runtime} · ${movie.Genre}</div>
+    `;
+    li.addEventListener("click", () => {
+      if (currentSelectedLi) currentSelectedLi.classList.remove("active");
+      li.classList.add("active");
+      currentSelectedLi = li;
+      displayDetails(movie);
     });
+    resultsEl.appendChild(li);
+  });
 }
-function displayMovieDetails(movie) {
-    let html = `
+
+function displayDetails(movie) {
+  detailsSection.classList.remove("hidden");
+  detailsSection.querySelector(".details-placeholder").style.display = "none";
+
+  const ratings = movie.Ratings?.map(r => `
+    <div class="rating-chip">
+      <span class="rating-source">${r.Source.replace("Internet Movie Database","IMDb")}</span>
+      <span class="rating-value">${r.Value}</span>
+    </div>`).join("") ?? "";
+
+  movieDetailsEl.innerHTML = `
     <h3 class="detail-title">${movie.Title}</h3>
-    <div class="detail-year">${movie.Year} • ${movie.Runtime} • ${movie.Rated}</div>
+    <div class="detail-meta-row">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
+
+    ${field("Sinopse",   movie.Plot)}
+    ${field("Diretor",   movie.Director)}
+    ${field("Elenco",    movie.Actors)}
+    ${field("Gênero",    movie.Genre)}
+    ${movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+    ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
+
+    ${ratings ? `<div class="detail-block">
+      <span class="detail-label">Avaliações</span>
+      <div class="ratings-row">${ratings}</div>
+    </div>` : ""}
   `;
-    if (movie.Plot && movie.Plot !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Sinopse</span>
-        <p class="detail-value">${movie.Plot}</p>
-      </div>
-    `;
-    }
-    if (movie.Genre && movie.Genre !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Gênero</span>
-        <p class="detail-value">${movie.Genre}</p>
-      </div>
-    `;
-    }
-    if (movie.Director && movie.Director !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Diretor</span>
-        <p class="detail-value">${movie.Director}</p>
-      </div>
-    `;
-    }
-    if (movie.Writer && movie.Writer !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Roteirista</span>
-        <p class="detail-value">${movie.Writer}</p>
-      </div>
-    `;
-    }
-    if (movie.Actors && movie.Actors !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Elenco</span>
-        <p class="detail-value">${movie.Actors}</p>
-      </div>
-    `;
-    }
-    if (movie.Awards && movie.Awards !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Prêmios</span>
-        <p class="detail-value">${movie.Awards}</p>
-      </div>
-    `;
-    }
-    if (movie.BoxOffice && movie.BoxOffice !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Bilheteria</span>
-        <p class="detail-value">${movie.BoxOffice}</p>
-      </div>
-    `;
-    }
-    if (movie.Language && movie.Language !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Idioma</span>
-        <p class="detail-value">${movie.Language}</p>
-      </div>
-    `;
-    }
-    if (movie.Country && movie.Country !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">País</span>
-        <p class="detail-value">${movie.Country}</p>
-      </div>
-    `;
-    }
-    // Avaliações
-    if (movie.Ratings && movie.Ratings.length > 0) {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">Avaliações</span>
-        <div class="rating-container">
-    `;
-        movie.Ratings.forEach(rating => {
-            html += `
-        <div class="rating-item">
-          <span class="rating-source">${rating.Source}</span>
-          <span class="rating-value">${rating.Value}</span>
-        </div>
-      `;
-        });
-        html += `
-        </div>
-      </div>
-    `;
-    }
-    // Adicionar IMDb info se disponível
-    if (movie.imdbRating && movie.imdbRating !== "N/A") {
-        html += `
-      <div class="detail-section">
-        <span class="detail-label">IMDb</span>
-        <p class="detail-value">${movie.imdbRating}/10 (${movie.imdbVotes} votos)</p>
-      </div>
-    `;
-    }
-    movieDetails.innerHTML = html;
 }
+
+function field(label, value) {
+  if (!value || value === "N/A") return "";
+  return `<div class="detail-block">
+    <span class="detail-label">${label}</span>
+    <p class="detail-value">${value}</p>
+  </div>`;
+}
+
 function hideDetails() {
-    detailsSection.classList.add("hidden");
-    if (currentSelectedLi) {
-        currentSelectedLi.classList.remove("active");
-        currentSelectedLi = null;
-    }
+  detailsSection.classList.add("hidden");
+  detailsSection.querySelector(".details-placeholder").style.display = "";
+  movieDetailsEl.innerHTML = "";
+  if (currentSelectedLi) { currentSelectedLi.classList.remove("active"); currentSelectedLi = null; }
 }
-// Event listeners
-input.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter")
-        return;
-    const query = input.value.trim();
-    if (!query)
-        return;
-    searchMovies(query);
-});
+
+function setStatus(msg, type) {
+  statusEl.textContent = msg;
+  statusEl.className = type === "error" ? "error" : "";
+}
+
+// Events
+function doSearch() {
+  const q = searchInput.value.trim();
+  if (q) searchMovies(q);
+}
+
+btnSearch.addEventListener("click", doSearch);
+searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 closeBtn.addEventListener("click", hideDetails);
