@@ -14,39 +14,37 @@ const BASE    = "https://www.omdbapi.com/";
 
 let currentSelectedLi = null;
 
-async function searchMovies(query) {
-  if (!query.trim()) return;
+// ── TOP 10 ON LOAD ─────────────────────────────────────────────────────────
 
-  setStatus("Buscando...", "");
+const SEED_TERMS = ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"];
+
+async function loadTopScifi() {
+  setStatus("Carregando top filmes Sci-Fi...", false);
   resultsEl.innerHTML = "";
   resultCountEl.textContent = "";
-  hideDetails();
 
   try {
-    // Page 1
-    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`);
-    const data1 = await res1.json();
-
-    if (data1.Response === "False" || !data1.Search) {
-      setStatus(data1.Error ?? "Nenhum resultado encontrado.", "error");
-      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`;
-      return;
-    }
-
-    let allMovies = [...data1.Search];
-    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
-    const pages = Math.ceil(total / 10);
-
-    // Remaining pages in parallel
-    const extras = await Promise.all(
-      Array.from({ length: pages - 1 }, (_, i) =>
-        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+    // Fetch page 1 for each seed term in parallel
+    const searchResults = await Promise.all(
+      SEED_TERMS.map(term =>
+        fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&apikey=${API_KEY}&page=1`)
           .then(r => r.json())
       )
     );
-    for (const p of extras) if (p.Search) allMovies.push(...p.Search);
 
-    setStatus(`Filtrando ${allMovies.length} resultados...`, "");
+    // Collect all unique imdbIDs
+    const seenIds = new Set();
+    const allMovies = [];
+    for (const data of searchResults) {
+      if (data.Search) {
+        for (const m of data.Search) {
+          if (!seenIds.has(m.imdbID)) {
+            seenIds.add(m.imdbID);
+            allMovies.push(m);
+          }
+        }
+      }
+    }
 
     // Fetch full details for all in parallel
     const details = await Promise.all(
@@ -55,35 +53,105 @@ async function searchMovies(query) {
       )
     );
 
-    // Keep only Sci-Fi
+    // Filter Sci-Fi only, must have valid IMDb rating
+    const scifi = details.filter(d =>
+      d.Response === "True" &&
+      d.Genre?.toLowerCase().includes("sci-fi") &&
+      d.imdbRating && d.imdbRating !== "N/A"
+    );
+
+    // Sort by IMDb rating descending, take top 10
+    const top10 = scifi
+      .sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating))
+      .slice(0, 10);
+
+    if (top10.length === 0) {
+      setStatus("", false);
+      resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`;
+      return;
+    }
+
+    setStatus("", false);
+    resultCountEl.textContent = `Top ${top10.length} · melhores avaliados`;
+    renderResults(top10);
+
+  } catch (err) {
+    console.error(err);
+    setStatus("", false);
+    resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`;
+  }
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
+
+async function searchMovies(query) {
+  setStatus("Buscando...", false);
+  resultsEl.innerHTML = "";
+  resultCountEl.textContent = "";
+  hideDetails();
+
+  try {
+    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`);
+    const data1 = await res1.json();
+
+    if (data1.Response === "False" || !data1.Search) {
+      setStatus(data1.Error ?? "Nenhum resultado encontrado.", true);
+      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`;
+      return;
+    }
+
+    let allMovies = [...data1.Search];
+    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
+    const pages = Math.ceil(total / 10);
+
+    const extras = await Promise.all(
+      Array.from({ length: pages - 1 }, (_, i) =>
+        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+          .then(r => r.json())
+      )
+    );
+    for (const p of extras) if (p.Search) allMovies.push(...p.Search);
+
+    setStatus(`Filtrando ${allMovies.length} resultados...`, false);
+
+    const details = await Promise.all(
+      allMovies.map(m =>
+        fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json())
+      )
+    );
+
     const scifi = details.filter(d =>
       d.Response === "True" && d.Genre?.toLowerCase().includes("sci-fi")
     );
 
     if (scifi.length === 0) {
-      setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", "error");
+      setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", true);
       resultsEl.innerHTML = `<li class="empty-state">Sem resultados Sci-Fi.</li>`;
       resultCountEl.textContent = "";
       return;
     }
 
-    setStatus("", "");
+    setStatus("", false);
     resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`;
     renderResults(scifi);
 
   } catch (err) {
     console.error(err);
-    setStatus("Erro de conexão.", "error");
+    setStatus("Erro de conexão.", true);
   }
 }
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
 
 function renderResults(movies) {
   resultsEl.innerHTML = "";
   movies.forEach(movie => {
     const li = document.createElement("li");
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
+      ? ` · ★ ${movie.imdbRating}` : "";
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
-      <div class="movie-meta">${movie.Year} · ${movie.Runtime} · ${movie.Genre}</div>
+      <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
     `;
     li.addEventListener("click", () => {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active");
@@ -101,21 +169,19 @@ function displayDetails(movie) {
 
   const ratings = movie.Ratings?.map(r => `
     <div class="rating-chip">
-      <span class="rating-source">${r.Source.replace("Internet Movie Database","IMDb")}</span>
+      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
       <span class="rating-value">${r.Value}</span>
     </div>`).join("") ?? "";
 
   movieDetailsEl.innerHTML = `
     <h3 class="detail-title">${movie.Title}</h3>
     <div class="detail-meta-row">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
-
     ${field("Sinopse",   movie.Plot)}
     ${field("Diretor",   movie.Director)}
     ${field("Elenco",    movie.Actors)}
     ${field("Gênero",    movie.Genre)}
-    ${movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+    ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
     ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
-
     ${ratings ? `<div class="detail-block">
       <span class="detail-label">Avaliações</span>
       <div class="ratings-row">${ratings}</div>
@@ -138,17 +204,22 @@ function hideDetails() {
   if (currentSelectedLi) { currentSelectedLi.classList.remove("active"); currentSelectedLi = null; }
 }
 
-function setStatus(msg, type) {
+function setStatus(msg, isError) {
   statusEl.textContent = msg;
-  statusEl.className = type === "error" ? "error" : "";
+  statusEl.className = isError ? "error" : "";
 }
 
-// Events
+// ── EVENTS ─────────────────────────────────────────────────────────────────
+
 function doSearch() {
   const q = searchInput.value.trim();
-  if (q) searchMovies(q);
+  if (!q) { setStatus("Digite um termo para pesquisar.", true); return; }
+  searchMovies(q);
 }
 
 btnSearch.addEventListener("click", doSearch);
 searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 closeBtn.addEventListener("click", hideDetails);
+
+// Load top Sci-Fi on page load
+loadTopScifi();

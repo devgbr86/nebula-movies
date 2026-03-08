@@ -273,3 +273,21 @@ header {
 #close-details:hover {
      color: #cc3300;
 }
+
+/* ── FOOTER ── */
+footer {
+     border-top: 1px solid #a2a9b1;
+     text-align: center;
+     padding: 1rem;
+     font-size: 0.8rem;
+     color: #54595d;
+}
+
+footer a {
+     color: #3366cc;
+     text-decoration: none;
+}
+
+footer a:hover {
+     text-decoration: underline;
+}

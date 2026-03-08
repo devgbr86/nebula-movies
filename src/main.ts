@@ -1,7 +1,4 @@
-type OMDbMovie = {
-  imdbID: string
-  Title: string
-}
+type OMDbMovie = { imdbID: string; Title: string }
 
 type OMDbSearchResponse = {
   Search?: OMDbMovie[]
@@ -22,6 +19,7 @@ type OMDbDetail = {
   Country: string
   Awards: string
   BoxOffice?: string
+  imdbRating: string
   Ratings: Array<{ Source: string; Value: string }>
   Response: string
 }
@@ -39,6 +37,71 @@ const API_KEY = "trilogy"
 const BASE    = "https://www.omdbapi.com/"
 
 let currentSelectedLi: HTMLLIElement | null = null
+
+// ── TOP 10 ON LOAD ─────────────────────────────────────────────────────────
+
+const SEED_TERMS = ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"]
+
+async function loadTopScifi(): Promise<void> {
+  setStatus("Carregando top filmes Sci-Fi...", false)
+  resultsEl.innerHTML = ""
+  resultCountEl.textContent = ""
+
+  try {
+    const searchResults = await Promise.all(
+      SEED_TERMS.map(term =>
+        fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&apikey=${API_KEY}&page=1`)
+          .then(r => r.json() as Promise<OMDbSearchResponse>)
+      )
+    )
+
+    const seenIds = new Set<string>()
+    const allMovies: OMDbMovie[] = []
+    for (const data of searchResults) {
+      if (data.Search) {
+        for (const m of data.Search) {
+          if (!seenIds.has(m.imdbID)) {
+            seenIds.add(m.imdbID)
+            allMovies.push(m)
+          }
+        }
+      }
+    }
+
+    const details = await Promise.all(
+      allMovies.map(m =>
+        fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json() as Promise<OMDbDetail>)
+      )
+    )
+
+    const scifi = details.filter(d =>
+      d.Response === "True" &&
+      d.Genre?.toLowerCase().includes("sci-fi") &&
+      d.imdbRating && d.imdbRating !== "N/A"
+    )
+
+    const top10 = scifi
+      .sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating))
+      .slice(0, 10)
+
+    if (top10.length === 0) {
+      setStatus("", false)
+      resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`
+      return
+    }
+
+    setStatus("", false)
+    resultCountEl.textContent = `Top ${top10.length} · melhor avaliados`
+    renderResults(top10)
+
+  } catch (err) {
+    console.error(err)
+    setStatus("", false)
+    resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`
+  }
+}
+
+// ── SEARCH ─────────────────────────────────────────────────────────────────
 
 async function searchMovies(query: string): Promise<void> {
   setStatus("Buscando...", false)
@@ -97,13 +160,17 @@ async function searchMovies(query: string): Promise<void> {
   }
 }
 
+// ── RENDER ─────────────────────────────────────────────────────────────────
+
 function renderResults(movies: OMDbDetail[]): void {
   resultsEl.innerHTML = ""
   movies.forEach(movie => {
     const li = document.createElement("li")
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
+      ? ` · ★ ${movie.imdbRating}` : ""
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
-      <div class="movie-meta">${movie.Year} · ${movie.Runtime} · ${movie.Genre}</div>
+      <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
     `
     li.addEventListener("click", () => {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active")
@@ -141,7 +208,7 @@ function displayDetails(movie: OMDbDetail): void {
     ${field("Diretor",   movie.Director)}
     ${field("Elenco",    movie.Actors)}
     ${field("Gênero",    movie.Genre)}
-    ${movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+    ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
     ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
     ${ratings ? `<div class="detail-block">
       <span class="detail-label">Avaliações</span>
@@ -165,9 +232,13 @@ function setStatus(msg: string, isError: boolean): void {
 
 function doSearch(): void {
   const q = searchInput.value.trim()
-  if (q) searchMovies(q)
+  if (!q) { setStatus("Digite um termo para pesquisar.", true); return }
+  searchMovies(q)
 }
 
 btnSearch.addEventListener("click", doSearch)
 searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch() })
 closeBtn.addEventListener("click", hideDetails)
+
+// Load top Sci-Fi on page load
+loadTopScifi()
