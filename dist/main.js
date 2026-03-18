@@ -16,17 +16,82 @@ const latestCol      = document.getElementById("latest-col");
 const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
+const decadeFilter = document.getElementById("decade-filter");
+
 let currentSelectedLi = null;
 let top10Loaded  = false;
 let latestLoaded = false;
 
+// ── MODAL ──────────────────────────────────────────────────────────────────
+
+function openModal(movie) {
+  let overlay = document.getElementById("movie-modal-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "movie-modal-overlay";
+    overlay.className = "movie-modal-overlay";
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal();
+    });
+  }
+
+  const ratings = movie.Ratings?.map(r => `
+    <div class="rating-chip">
+      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
+      <span class="rating-value">${r.Value}</span>
+    </div>`).join("") ?? "";
+
+  const poster = movie.Poster && movie.Poster !== "N/A"
+    ? `<div class="movie-modal-poster"><img src="${movie.Poster}" alt="Poster de ${movie.Title}"></div>`
+    : `<div class="movie-modal-poster"><div class="movie-modal-poster-placeholder">Sem poster</div></div>`;
+
+  overlay.innerHTML = `
+    <div class="movie-modal">
+      <div class="movie-modal-header">
+        <span class="movie-modal-title">${movie.Title}</span>
+        <button class="movie-modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="movie-modal-meta">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
+      <div class="movie-modal-body">
+        ${poster}
+        <div class="movie-modal-info">
+          ${field("Sinopse",  movie.Plot)}
+          ${field("Diretor",  movie.Director)}
+          ${field("Elenco",   movie.Actors)}
+          ${field("Gênero",   movie.Genre)}
+          ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+          ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
+          ${ratings ? `<div class="detail-block">
+            <span class="detail-label">Avaliações</span>
+            <div class="movie-modal-ratings">${ratings}</div>
+          </div>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("modal-close-btn").addEventListener("click", closeModal);
+  requestAnimationFrame(() => overlay.classList.add("open"));
+  document.addEventListener("keydown", onEscKey);
+}
+
+function closeModal() {
+  const overlay = document.getElementById("movie-modal-overlay");
+  if (!overlay) return;
+  overlay.classList.remove("open");
+  document.removeEventListener("keydown", onEscKey);
+}
+
+function onEscKey(e) {
+  if (e.key === "Escape") closeModal();
+}
+
 // ── HELPERS ────────────────────────────────────────────────────────────────
 
 function showOnlyRank(which) {
-  // which: "top10" | "latest" | "search" | "none"
-  top10Col.style.display  = which === "top10"  ? "" : "none";
+  top10Col.style.display  = which === "top10" || which === "search" ? "" : "none";
   latestCol.style.display = which === "latest" ? "" : "none";
-
   btnTop10.classList.toggle("active",  which === "top10");
   btnLatest.classList.toggle("active", which === "latest");
 }
@@ -186,7 +251,7 @@ function renderLatestResults(movies) {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active");
       li.classList.add("active");
       currentSelectedLi = li;
-      displayDetails(movie);
+      openModal(movie);
     });
     latestListEl.appendChild(li);
   });
@@ -195,35 +260,64 @@ function renderLatestResults(movies) {
 // ── SEARCH ─────────────────────────────────────────────────────────────────
 
 async function searchMovies(query) {
+  const startYear = decadeFilter.value ? parseInt(decadeFilter.value) : null;
+  const endYear   = startYear ? startYear + 9 : null;
+
   setStatus("Buscando...", false);
   resultsEl.innerHTML = "";
   resultCountEl.textContent = "";
   hideDetails();
   showOnlyRank("search");
-  top10Col.style.display = "";   // search results go into #results inside top10-col
-  top10Col.querySelector("h3").textContent = "";
 
   try {
-    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`);
-    const data1 = await res1.json();
+    const yearList = [];
+    if (startYear && endYear) {
+      for (let y = startYear; y <= endYear; y++) yearList.push(y);
+    } else {
+      yearList.push(null);
+    }
 
-    if (data1.Response === "False" || !data1.Search) {
-      setStatus(data1.Error ?? "Nenhum resultado encontrado.", true);
+    const seenIds = new Set();
+    const allMovies = [];
+
+    const firstPageResults = await Promise.all(
+      yearList.map(y => {
+        const yearParam = y ? `&y=${y}` : "";
+        return fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1${yearParam}`)
+          .then(r => r.json());
+      })
+    );
+
+    for (const data1 of firstPageResults) {
+      if (!data1.Search) continue;
+      for (const m of data1.Search) {
+        if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m); }
+      }
+
+      const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
+      const pages = Math.ceil(total / 10);
+      if (pages > 1) {
+        const extras = await Promise.all(
+          Array.from({ length: pages - 1 }, (_, i) =>
+            fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+              .then(r => r.json())
+          )
+        );
+        for (const p of extras) {
+          if (p.Search) {
+            for (const m of p.Search) {
+              if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m); }
+            }
+          }
+        }
+      }
+    }
+
+    if (allMovies.length === 0) {
+      setStatus("Nenhum resultado encontrado.", true);
       resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`;
       return;
     }
-
-    let allMovies = [...data1.Search];
-    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
-    const pages = Math.ceil(total / 10);
-
-    const extras = await Promise.all(
-      Array.from({ length: pages - 1 }, (_, i) =>
-        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
-          .then(r => r.json())
-      )
-    );
-    for (const p of extras) if (p.Search) allMovies.push(...p.Search);
 
     setStatus(`Filtrando ${allMovies.length} resultados...`, false);
 
@@ -233,9 +327,15 @@ async function searchMovies(query) {
       )
     );
 
-    const scifi = details.filter(d =>
-      d.Response === "True" && d.Genre?.toLowerCase().includes("sci-fi")
-    );
+    const scifi = details.filter(d => {
+      if (d.Response !== "True") return false;
+      if (!d.Genre?.toLowerCase().includes("sci-fi")) return false;
+      if (startYear && endYear) {
+        const y = parseInt(d.Year);
+        if (isNaN(y) || y < startYear || y > endYear) return false;
+      }
+      return true;
+    });
 
     if (scifi.length === 0) {
       setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", true);
@@ -247,8 +347,6 @@ async function searchMovies(query) {
     setStatus("", false);
     resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`;
     renderResults(scifi);
-    // restore heading for next top10 open
-    top10Col.querySelector("h3").textContent = "";
     top10Loaded = false;
 
   } catch (err) {
@@ -272,36 +370,10 @@ function renderResults(movies) {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active");
       li.classList.add("active");
       currentSelectedLi = li;
-      displayDetails(movie);
+      openModal(movie);
     });
     resultsEl.appendChild(li);
   });
-}
-
-function displayDetails(movie) {
-  detailsSection.classList.remove("hidden");
-  detailsSection.querySelector(".details-placeholder").style.display = "none";
-
-  const ratings = movie.Ratings?.map(r => `
-    <div class="rating-chip">
-      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
-      <span class="rating-value">${r.Value}</span>
-    </div>`).join("") ?? "";
-
-  movieDetailsEl.innerHTML = `
-    <h3 class="detail-title">${movie.Title}</h3>
-    <div class="detail-meta-row">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
-    ${field("Sinopse",   movie.Plot)}
-    ${field("Diretor",   movie.Director)}
-    ${field("Elenco",    movie.Actors)}
-    ${field("Gênero",    movie.Genre)}
-    ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
-    ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
-    ${ratings ? `<div class="detail-block">
-      <span class="detail-label">Avaliações</span>
-      <div class="ratings-row">${ratings}</div>
-    </div>` : ""}
-  `;
 }
 
 function field(label, value) {

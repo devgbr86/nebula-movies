@@ -20,6 +20,7 @@ type OMDbDetail = {
   Awards: string
   BoxOffice?: string
   imdbRating: string
+  Poster?: string
   Ratings: Array<{ Source: string; Value: string }>
   Response: string
 }
@@ -40,9 +41,76 @@ const latestCol      = document.getElementById("latest-col")      as HTMLDivElem
 const API_KEY = "trilogy"
 const BASE    = "https://www.omdbapi.com/"
 
+const decadeFilter = document.getElementById("decade-filter") as HTMLSelectElement
+
 let currentSelectedLi: HTMLLIElement | null = null
 let top10Loaded  = false
 let latestLoaded = false
+
+// ── MODAL ──────────────────────────────────────────────────────────────────
+
+function openModal(movie: OMDbDetail): void {
+  let overlay = document.getElementById("movie-modal-overlay")
+  if (!overlay) {
+    overlay = document.createElement("div")
+    overlay.id = "movie-modal-overlay"
+    overlay.className = "movie-modal-overlay"
+    document.body.appendChild(overlay)
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeModal()
+    })
+  }
+
+  const ratings = movie.Ratings?.map(r => `
+    <div class="rating-chip">
+      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
+      <span class="rating-value">${r.Value}</span>
+    </div>`).join("") ?? ""
+
+  const poster = movie.Poster && movie.Poster !== "N/A"
+    ? `<div class="movie-modal-poster"><img src="${movie.Poster}" alt="Poster de ${movie.Title}"></div>`
+    : `<div class="movie-modal-poster"><div class="movie-modal-poster-placeholder">Sem poster</div></div>`
+
+  overlay.innerHTML = `
+    <div class="movie-modal">
+      <div class="movie-modal-header">
+        <span class="movie-modal-title">${movie.Title}</span>
+        <button class="movie-modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="movie-modal-meta">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
+      <div class="movie-modal-body">
+        ${poster}
+        <div class="movie-modal-info">
+          ${field("Sinopse",  movie.Plot)}
+          ${field("Diretor",  movie.Director)}
+          ${field("Elenco",   movie.Actors)}
+          ${field("Gênero",   movie.Genre)}
+          ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
+          ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
+          ${ratings ? `<div class="detail-block">
+            <span class="detail-label">Avaliações</span>
+            <div class="movie-modal-ratings">${ratings}</div>
+          </div>` : ""}
+        </div>
+      </div>
+    </div>
+  `
+
+  document.getElementById("modal-close-btn")!.addEventListener("click", closeModal)
+  requestAnimationFrame(() => overlay!.classList.add("open"))
+  document.addEventListener("keydown", onEscKey)
+}
+
+function closeModal(): void {
+  const overlay = document.getElementById("movie-modal-overlay")
+  if (!overlay) return
+  overlay.classList.remove("open")
+  document.removeEventListener("keydown", onEscKey)
+}
+
+function onEscKey(e: KeyboardEvent): void {
+  if (e.key === "Escape") closeModal()
+}
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 
@@ -207,7 +275,7 @@ function renderLatestResults(movies: OMDbDetail[]): void {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active")
       li.classList.add("active")
       currentSelectedLi = li
-      displayDetails(movie)
+      openModal(movie)
     })
     latestListEl.appendChild(li)
   })
@@ -216,6 +284,9 @@ function renderLatestResults(movies: OMDbDetail[]): void {
 // ── SEARCH ─────────────────────────────────────────────────────────────────
 
 async function searchMovies(query: string): Promise<void> {
+  const startYear = decadeFilter.value ? parseInt(decadeFilter.value) : null
+  const endYear   = startYear ? startYear + 9 : null
+
   setStatus("Buscando...", false)
   resultsEl.innerHTML = ""
   resultCountEl.textContent = ""
@@ -223,26 +294,54 @@ async function searchMovies(query: string): Promise<void> {
   showOnlyRank("search")
 
   try {
-    const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`)
-    const data1: OMDbSearchResponse = await res1.json()
+    const yearList: (number | null)[] = []
+    if (startYear && endYear) {
+      for (let y = startYear; y <= endYear; y++) yearList.push(y)
+    } else {
+      yearList.push(null)
+    }
 
-    if (data1.Response === "False" || !data1.Search) {
-      setStatus(data1.Error ?? "Nenhum resultado encontrado.", true)
+    const seenIds = new Set<string>()
+    const allMovies: OMDbMovie[] = []
+
+    const firstPageResults = await Promise.all(
+      yearList.map(y => {
+        const yearParam = y ? `&y=${y}` : ""
+        return fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1${yearParam}`)
+          .then(r => r.json() as Promise<OMDbSearchResponse>)
+      })
+    )
+
+    for (const data1 of firstPageResults) {
+      if (!data1.Search) continue
+      for (const m of data1.Search) {
+        if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m) }
+      }
+
+      const total = Math.min(parseInt(data1.totalResults ?? "0"), 50)
+      const pages = Math.ceil(total / 10)
+      if (pages > 1) {
+        const extras = await Promise.all(
+          Array.from({ length: pages - 1 }, (_, i) =>
+            fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
+              .then(r => r.json() as Promise<OMDbSearchResponse>)
+          )
+        )
+        for (const p of extras) {
+          if (p.Search) {
+            for (const m of p.Search) {
+              if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m) }
+            }
+          }
+        }
+      }
+    }
+
+    if (allMovies.length === 0) {
+      setStatus("Nenhum resultado encontrado.", true)
       resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado.</li>`
       return
     }
-
-    let allMovies: OMDbMovie[] = [...data1.Search]
-    const total = Math.min(parseInt(data1.totalResults ?? "0"), 50)
-    const pages = Math.ceil(total / 10)
-
-    const extras = await Promise.all(
-      Array.from({ length: pages - 1 }, (_, i) =>
-        fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=${i + 2}`)
-          .then(r => r.json() as Promise<OMDbSearchResponse>)
-      )
-    )
-    for (const p of extras) if (p.Search) allMovies.push(...p.Search)
 
     setStatus(`Filtrando ${allMovies.length} resultados...`, false)
 
@@ -252,9 +351,15 @@ async function searchMovies(query: string): Promise<void> {
       )
     )
 
-    const scifi = details.filter(d =>
-      d.Response === "True" && d.Genre?.toLowerCase().includes("sci-fi")
-    )
+    const scifi = details.filter(d => {
+      if (d.Response !== "True") return false
+      if (!d.Genre?.toLowerCase().includes("sci-fi")) return false
+      if (startYear && endYear) {
+        const y = parseInt(d.Year)
+        if (isNaN(y) || y < startYear || y > endYear) return false
+      }
+      return true
+    })
 
     if (scifi.length === 0) {
       setStatus("Nenhum filme Sci-Fi encontrado para esse termo.", true)
@@ -289,7 +394,7 @@ function renderResults(movies: OMDbDetail[]): void {
       if (currentSelectedLi) currentSelectedLi.classList.remove("active")
       li.classList.add("active")
       currentSelectedLi = li
-      displayDetails(movie)
+      openModal(movie)
     })
     resultsEl.appendChild(li)
   })
@@ -301,33 +406,6 @@ function field(label: string, value: string): string {
     <span class="detail-label">${label}</span>
     <p class="detail-value">${value}</p>
   </div>`
-}
-
-function displayDetails(movie: OMDbDetail): void {
-  detailsSection.classList.remove("hidden")
-  const placeholder = detailsSection.querySelector(".details-placeholder") as HTMLElement
-  placeholder.style.display = "none"
-
-  const ratings = movie.Ratings?.map(r => `
-    <div class="rating-chip">
-      <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
-      <span class="rating-value">${r.Value}</span>
-    </div>`).join("") ?? ""
-
-  movieDetailsEl.innerHTML = `
-    <h3 class="detail-title">${movie.Title}</h3>
-    <div class="detail-meta-row">${movie.Year} · ${movie.Runtime} · ${movie.Rated} · ${movie.Country}</div>
-    ${field("Sinopse",   movie.Plot)}
-    ${field("Diretor",   movie.Director)}
-    ${field("Elenco",    movie.Actors)}
-    ${field("Gênero",    movie.Genre)}
-    ${movie.Awards && movie.Awards !== "N/A" ? field("Prêmios", movie.Awards) : ""}
-    ${movie.BoxOffice && movie.BoxOffice !== "N/A" ? field("Bilheteria", movie.BoxOffice) : ""}
-    ${ratings ? `<div class="detail-block">
-      <span class="detail-label">Avaliações</span>
-      <div class="ratings-row">${ratings}</div>
-    </div>` : ""}
-  `
 }
 
 function hideDetails(): void {

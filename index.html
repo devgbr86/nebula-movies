@@ -5,8 +5,8 @@
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
      <title>Sci-Fi MOV API</title>
-     <link rel="icon" type="image/png" href="space_icon.png">
-     <link rel="stylesheet" href="main.css" />
+     <link rel="icon" type="image/png" href="./assets/space_icon.png">
+     <link rel="stylesheet" href="./styles/main.css" />
 </head>
 
 <body>
@@ -14,7 +14,7 @@
      <header>
           <span style="vertical-align: middle;" class="logo-title">
                <a href="index.html"><img style="width: 35px; height: 35px; border-radius: 50%;"
-                         src="space_icon.png"></a>
+                         src="./assets/space_icon.png"></a>
                <em></em></span>
           <span class="header-sub">Science Fiction Movie Search · OMDb API</span>
      </header>
@@ -24,6 +24,15 @@
           <div class="search-row">
                <input id="search" type="text" placeholder="Ex: space, robot, future, blade runner..."
                     autocomplete="off" />
+               <select id="decade-filter">
+                    <option value="">All years</option>
+                    <option value="1970">1970s</option>
+                    <option value="1980">1980s</option>
+                    <option value="1990">1990s</option>
+                    <option value="2000">2000s</option>
+                    <option value="2010">2010s</option>
+                    <option value="2020">2020s</option>
+               </select>
                <button class="btn-search" id="btn-search">Pesquisar</button>
           </div>
           <div id="status-msg"></div>
