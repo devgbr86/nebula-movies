@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 
 <head>
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>Sci-Fi MOV API</title>
+     <title>Nebula Movies</title>
      <link rel="icon" type="image/png" href="./assets/space_icon.png">
      <link rel="stylesheet" href="./styles/main.css" />
 </head>
@@ -12,69 +12,26 @@
 <body>
 
      <header>
-          <span style="vertical-align: middle;" class="logo-title">
-               <a href="index.html"><img style="width: 35px; height: 35px; border-radius: 50%;"
-                         src="./assets/space_icon.png"></a>
-               <em></em></span>
-          <span class="header-sub">Science Fiction Movie Search · OMDb API</span>
+          <div class="header-inner">
+               <span class="logo-title">
+                    <a href="/" data-link>
+                         <img style="width:35px;height:35px;border-radius:50%;" src="./assets/space_icon.png">
+                    </a>
+               </span>
+               <span class="header-sub">Science Fiction Movie Search &middot; OMDb API</span>
+               <nav class="main-nav">
+                    <a href="/" data-link>Home</a>
+                    <a href="/search" data-link>Search</a>
+               </nav>
+          </div>
      </header>
 
-     <div class="search-area">
-          <h2>Pesquisar filmes Sci-Fi</h2>
-          <div class="search-row">
-               <input id="search" type="text" placeholder="Ex: space, robot, future, blade runner..."
-                    autocomplete="off" />
-               <select id="decade-filter">
-                    <option value="">All years</option>
-                    <option value="1970">1970s</option>
-                    <option value="1980">1980s</option>
-                    <option value="1990">1990s</option>
-                    <option value="2000">2000s</option>
-                    <option value="2010">2010s</option>
-                    <option value="2020">2020s</option>
-               </select>
-               <button class="btn-search" id="btn-search">Pesquisar</button>
-          </div>
-          <div id="status-msg"></div>
-          <div class="rank-btns">
-               <button class="btn-rank" id="btn-top10">★ Top 10 Best of All Time</button>
-               <button class="btn-rank" id="btn-latest">🕐 Latest Movies</button>
-          </div>
-     </div>
-
-     <div class="content">
-
-          <div class="ranks-col">
-
-               <div class="results-col" id="top10-col" style="display:none;">
-                    <div class="results-header">
-                         <h3></h3>
-                         <span id="result-count"></span>
-                    </div>
-                    <ul id="results"></ul>
-               </div>
-
-               <div class="results-col" id="latest-col" style="display:none;">
-                    <div class="results-header">
-                         <h3></h3>
-                         <span id="latest-count"></span>
-                    </div>
-                    <ul id="latest-results"></ul>
-               </div>
-
-          </div>
-
-          <div id="details-section" class="details-panel hidden">
-               <div class="details-placeholder">Selecione um filme para ver os detalhes.</div>
-               <button id="close-details">✕</button>
-               <div id="movie-details"></div>
-          </div>
-
-     </div>
+     <main id="app"></main>
 
      <footer>
           <a href="https://fronthub.pages.dev" target="_blank">
-               Desenvolvido por Guilherme Ribeiro<br>fronthub.pages.dev</a>
+               Developed by Guilherme Ribeiro &middot; fronthub.pages.dev
+          </a>
      </footer>
 
      <script type="module" src="./dist/main.js"></script>
