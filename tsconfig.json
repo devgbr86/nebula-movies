@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2017",
     "module": "ES2020",
-    "lib": ["ES2017", "DOM"],
+    "moduleResolution": "node",
+    "lib": ["ES2017", "ES2015", "DOM"],
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
