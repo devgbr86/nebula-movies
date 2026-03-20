@@ -8,10 +8,25 @@ const GENRES = [
     "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western",
 ];
 const COUNTRIES = [
-    "USA", "UK", "Japan", "France", "Germany", "Italy",
-    "Soviet Union", "Australia", "Canada", "Spain",
-    "South Korea", "China", "India", "Brazil", "Mexico",
-    "Argentina", "Sweden", "Denmark", "Poland",
+    { label: "USA", match: "United States" },
+    { label: "UK", match: "United Kingdom" },
+    { label: "Japan", match: "Japan" },
+    { label: "France", match: "France" },
+    { label: "Germany", match: "Germany" },
+    { label: "Italy", match: "Italy" },
+    { label: "Soviet Union", match: "Soviet Union" },
+    { label: "Australia", match: "Australia" },
+    { label: "Canada", match: "Canada" },
+    { label: "Spain", match: "Spain" },
+    { label: "South Korea", match: "South Korea" },
+    { label: "China", match: "China" },
+    { label: "India", match: "India" },
+    { label: "Brazil", match: "Brazil" },
+    { label: "Mexico", match: "Mexico" },
+    { label: "Argentina", match: "Argentina" },
+    { label: "Sweden", match: "Sweden" },
+    { label: "Denmark", match: "Denmark" },
+    { label: "Poland", match: "Poland" },
 ];
 let currentSelectedLi = null;
 function setStatus(msg, isError) {
@@ -37,6 +52,18 @@ function renderMovieLi(movie, listEl) {
     });
     listEl.appendChild(li);
 }
+function buildUrl(title, type, page, y) {
+    const params = new URLSearchParams({
+        s: title,
+        apikey: API_KEY,
+        page: String(page),
+    });
+    if (type)
+        params.set("type", type);
+    if (y)
+        params.set("y", String(y));
+    return `${BASE}?${params.toString()}`;
+}
 async function fetchIds(title, type, startYear, endYear) {
     const yearList = [];
     if (startYear && endYear) {
@@ -46,12 +73,11 @@ async function fetchIds(title, type, startYear, endYear) {
     else {
         yearList.push(null);
     }
-    const typeParam = type ? `&type=${type}` : "";
     const seenIds = new Set();
     const ids = [];
     await Promise.all(yearList.map(async (y) => {
-        const yp = y ? `&y=${y}` : "";
-        const data = await fetch(`${BASE}?s=${encodeURIComponent(title)}&apikey=${API_KEY}&page=1${typeParam}${yp}`).then(r => r.json());
+        const data = await fetch(buildUrl(title, type, 1, y))
+            .then(r => r.json());
         if (!data.Search)
             return;
         for (const m of data.Search) {
@@ -63,7 +89,8 @@ async function fetchIds(title, type, startYear, endYear) {
         const total = Math.min(parseInt(data.totalResults ?? "0"), 100);
         const pages = Math.min(Math.ceil(total / 10), 5);
         if (pages > 1) {
-            const extras = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => fetch(`${BASE}?s=${encodeURIComponent(title)}&apikey=${API_KEY}&page=${i + 2}${typeParam}${yp}`).then(r => r.json())));
+            const extras = await Promise.all(Array.from({ length: pages - 1 }, (_, i) => fetch(buildUrl(title, type, i + 2, y))
+                .then(r => r.json())));
             for (const p of extras) {
                 if (p.Search) {
                     for (const m of p.Search) {
@@ -88,8 +115,11 @@ function matchesFilters(movie, genreVal, countryVal, startYear, endYear) {
     }
     if (genreVal && !movie.Genre?.toLowerCase().includes(genreVal.toLowerCase()))
         return false;
-    if (countryVal && !movie.Country?.toLowerCase().includes(countryVal.toLowerCase()))
-        return false;
+    if (countryVal) {
+        const movieCountries = (movie.Country ?? "").split(",").map(c => c.trim().toLowerCase());
+        if (!movieCountries.some(c => c.includes(countryVal.toLowerCase())))
+            return false;
+    }
     return true;
 }
 async function searchMovies(title, type, genreVal, countryVal) {
@@ -134,7 +164,7 @@ export function renderSearch(app) {
     const genreOptions = `<option value="">All genres</option>` +
         GENRES.map(g => `<option value="${g}">${g}</option>`).join("");
     const countryOptions = `<option value="">All countries</option>` +
-        COUNTRIES.map(c => `<option value="${c}">${c}</option>`).join("");
+        COUNTRIES.map(c => `<option value="${c.match}">${c.label}</option>`).join("");
     app.innerHTML = `
     <div class="search-area">
       <h2>Search database</h2>

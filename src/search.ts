@@ -11,11 +11,26 @@ const GENRES = [
   "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western",
 ];
 
-const COUNTRIES = [
-  "USA", "UK", "Japan", "France", "Germany", "Italy",
-  "Soviet Union", "Australia", "Canada", "Spain",
-  "South Korea", "China", "India", "Brazil", "Mexico",
-  "Argentina", "Sweden", "Denmark", "Poland",
+const COUNTRIES: { label: string; match: string }[] = [
+  { label: "USA",         match: "United States" },
+  { label: "UK",          match: "United Kingdom" },
+  { label: "Japan",       match: "Japan"          },
+  { label: "France",      match: "France"         },
+  { label: "Germany",     match: "Germany"        },
+  { label: "Italy",       match: "Italy"          },
+  { label: "Soviet Union", match: "Soviet Union"  },
+  { label: "Australia",   match: "Australia"      },
+  { label: "Canada",      match: "Canada"         },
+  { label: "Spain",       match: "Spain"          },
+  { label: "South Korea",  match: "South Korea"   },
+  { label: "China",       match: "China"          },
+  { label: "India",       match: "India"          },
+  { label: "Brazil",      match: "Brazil"         },
+  { label: "Mexico",      match: "Mexico"         },
+  { label: "Argentina",   match: "Argentina"      },
+  { label: "Sweden",      match: "Sweden"         },
+  { label: "Denmark",     match: "Denmark"        },
+  { label: "Poland",      match: "Poland"         },
 ];
 
 let currentSelectedLi: HTMLLIElement | null = null;
@@ -44,6 +59,17 @@ function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   listEl.appendChild(li);
 }
 
+function buildUrl(title: string, type: string, page: number, y: number | null): string {
+  const params = new URLSearchParams({
+    s:      title,
+    apikey: API_KEY,
+    page:   String(page),
+  });
+  if (type) params.set("type", type);
+  if (y)    params.set("y",    String(y));
+  return `${BASE}?${params.toString()}`;
+}
+
 async function fetchIds(
   title:     string,
   type:      string,
@@ -57,16 +83,13 @@ async function fetchIds(
     yearList.push(null);
   }
 
-  const typeParam = type ? `&type=${type}` : "";
-  const seenIds   = new Set<string>();
+  const seenIds = new Set<string>();
   const ids: string[] = [];
 
   await Promise.all(
     yearList.map(async (y: number | null) => {
-      const yp = y ? `&y=${y}` : "";
-      const data = await fetch(
-        `${BASE}?s=${encodeURIComponent(title)}&apikey=${API_KEY}&page=1${typeParam}${yp}`
-      ).then(r => r.json() as Promise<OMDbSearchResponse>);
+      const data = await fetch(buildUrl(title, type, 1, y))
+        .then(r => r.json() as Promise<OMDbSearchResponse>);
 
       if (!data.Search) return;
       for (const m of data.Search) {
@@ -78,9 +101,8 @@ async function fetchIds(
       if (pages > 1) {
         const extras = await Promise.all(
           Array.from({ length: pages - 1 }, (_, i) =>
-            fetch(
-              `${BASE}?s=${encodeURIComponent(title)}&apikey=${API_KEY}&page=${i + 2}${typeParam}${yp}`
-            ).then(r => r.json() as Promise<OMDbSearchResponse>)
+            fetch(buildUrl(title, type, i + 2, y))
+              .then(r => r.json() as Promise<OMDbSearchResponse>)
           )
         );
         for (const p of extras) {
@@ -113,7 +135,10 @@ function matchesFilters(
 
   if (genreVal && !movie.Genre?.toLowerCase().includes(genreVal.toLowerCase())) return false;
 
-  if (countryVal && !movie.Country?.toLowerCase().includes(countryVal.toLowerCase())) return false;
+  if (countryVal) {
+    const movieCountries = (movie.Country ?? "").split(",").map(c => c.trim().toLowerCase());
+    if (!movieCountries.some(c => c.includes(countryVal.toLowerCase()))) return false;
+  }
 
   return true;
 }
@@ -181,7 +206,7 @@ export function renderSearch(app: HTMLElement): void {
     GENRES.map(g => `<option value="${g}">${g}</option>`).join("");
 
   const countryOptions = `<option value="">All countries</option>` +
-    COUNTRIES.map(c => `<option value="${c}">${c}</option>`).join("");
+    COUNTRIES.map(c => `<option value="${c.match}">${c.label}</option>`).join("");
 
   app.innerHTML = `
     <div class="search-area">
