@@ -9,6 +9,11 @@ const GENRE_CONFIG = {
         apiTerm: "sci-fi",
         seeds: ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"],
     },
+    fantasy: {
+        label: "Fantasy",
+        apiTerm: "fantasy",
+        seeds: ["fantasy", "dragon", "magic", "wizard", "quest", "hero", "mythical", "adventure"],
+    },
     horror: {
         label: "Horror",
         apiTerm: "horror",
@@ -38,6 +43,16 @@ const GENRE_CONFIG = {
         label: "Drama",
         apiTerm: "drama",
         seeds: ["drama", "family", "life", "love", "loss", "redemption", "struggle", "true story"],
+    },
+    biography: {
+        label: "Biography",
+        apiTerm: "biography",
+        seeds: ["biography", "true story", "based on", "life of", "historical", "legend", "pioneer", "genius"],
+    },
+    animation: {
+        label: "Animation",
+        apiTerm: "animation",
+        seeds: ["animation", "animated", "pixar", "ghibli", "cartoon", "disney", "dreamworks", "anime"],
     },
 };
 let currentSelectedLi = null;

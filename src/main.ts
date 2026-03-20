@@ -64,30 +64,39 @@ function onEscKey(e: KeyboardEvent): void {
 // ─── Boot ─────────────────────────────────────────────────
 const app = document.getElementById("app") as HTMLElement;
 
-register("/",                        () => renderHome(app));
+register("/",                          () => renderHome(app));
 
-register("/search/scifi",            () => renderSearch(app, "scifi"));
-register("/search/horror",           () => renderSearch(app, "horror"));
-register("/search/western",          () => renderSearch(app, "western"));
-register("/search/comedy",           () => renderSearch(app, "comedy"));
-register("/search/war",              () => renderSearch(app, "war"));
-register("/search/crime",            () => renderSearch(app, "crime"));
-register("/search/drama",            () => renderSearch(app, "drama"));
+register("/search/scifi",              () => renderSearch(app, "scifi"));
+register("/search/fantasy",            () => renderSearch(app, "fantasy"));
+register("/search/horror",             () => renderSearch(app, "horror"));
+register("/search/western",            () => renderSearch(app, "western"));
+register("/search/comedy",             () => renderSearch(app, "comedy"));
+register("/search/war",                () => renderSearch(app, "war"));
+register("/search/crime",              () => renderSearch(app, "crime"));
+register("/search/drama",              () => renderSearch(app, "drama"));
+register("/search/biography",          () => renderSearch(app, "biography"));
+register("/search/animation",          () => renderSearch(app, "animation"));
 
-register("/category/top/scifi",      () => renderCategory(app, "top",    "scifi"));
-register("/category/top/horror",     () => renderCategory(app, "top",    "horror"));
-register("/category/top/western",    () => renderCategory(app, "top",    "western"));
-register("/category/top/comedy",     () => renderCategory(app, "top",    "comedy"));
-register("/category/top/war",        () => renderCategory(app, "top",    "war"));
-register("/category/top/crime",      () => renderCategory(app, "top",    "crime"));
-register("/category/top/drama",      () => renderCategory(app, "top",    "drama"));
+register("/category/top/scifi",        () => renderCategory(app, "top",    "scifi"));
+register("/category/top/fantasy",      () => renderCategory(app, "top",    "fantasy"));
+register("/category/top/horror",       () => renderCategory(app, "top",    "horror"));
+register("/category/top/western",      () => renderCategory(app, "top",    "western"));
+register("/category/top/comedy",       () => renderCategory(app, "top",    "comedy"));
+register("/category/top/war",          () => renderCategory(app, "top",    "war"));
+register("/category/top/crime",        () => renderCategory(app, "top",    "crime"));
+register("/category/top/drama",        () => renderCategory(app, "top",    "drama"));
+register("/category/top/biography",    () => renderCategory(app, "top",    "biography"));
+register("/category/top/animation",    () => renderCategory(app, "top",    "animation"));
 
-register("/category/latest/scifi",   () => renderCategory(app, "latest", "scifi"));
-register("/category/latest/horror",  () => renderCategory(app, "latest", "horror"));
-register("/category/latest/western", () => renderCategory(app, "latest", "western"));
-register("/category/latest/comedy",  () => renderCategory(app, "latest", "comedy"));
-register("/category/latest/war",     () => renderCategory(app, "latest", "war"));
-register("/category/latest/crime",   () => renderCategory(app, "latest", "crime"));
-register("/category/latest/drama",   () => renderCategory(app, "latest", "drama"));
+register("/category/latest/scifi",     () => renderCategory(app, "latest", "scifi"));
+register("/category/latest/fantasy",   () => renderCategory(app, "latest", "fantasy"));
+register("/category/latest/horror",    () => renderCategory(app, "latest", "horror"));
+register("/category/latest/western",   () => renderCategory(app, "latest", "western"));
+register("/category/latest/comedy",    () => renderCategory(app, "latest", "comedy"));
+register("/category/latest/war",       () => renderCategory(app, "latest", "war"));
+register("/category/latest/crime",     () => renderCategory(app, "latest", "crime"));
+register("/category/latest/drama",     () => renderCategory(app, "latest", "drama"));
+register("/category/latest/biography", () => renderCategory(app, "latest", "biography"));
+register("/category/latest/animation", () => renderCategory(app, "latest", "animation"));
 
 initRouter();

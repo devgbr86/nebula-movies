@@ -5,13 +5,16 @@ const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
 const GENRE_CONFIG: Record<string, { label: string; apiTerm: string }> = {
-  scifi:   { label: "Sci-Fi",  apiTerm: "sci-fi"  },
-  horror:  { label: "Horror",  apiTerm: "horror"  },
-  western: { label: "Western", apiTerm: "western" },
-  comedy:  { label: "Comedy",  apiTerm: "comedy"  },
-  war:     { label: "War",     apiTerm: "war"      },
-  crime:   { label: "Crime",   apiTerm: "crime"    },
-  drama:   { label: "Drama",   apiTerm: "drama"    },
+  scifi:     { label: "Sci-Fi",    apiTerm: "sci-fi"     },
+  fantasy:   { label: "Fantasy",   apiTerm: "fantasy"    },
+  horror:    { label: "Horror",    apiTerm: "horror"     },
+  western:   { label: "Western",   apiTerm: "western"    },
+  comedy:    { label: "Comedy",    apiTerm: "comedy"     },
+  war:       { label: "War",       apiTerm: "war"        },
+  crime:     { label: "Crime",     apiTerm: "crime"      },
+  drama:     { label: "Drama",     apiTerm: "drama"      },
+  biography: { label: "Biography", apiTerm: "biography"  },
+  animation: { label: "Animation", apiTerm: "animation"  },
 };
 
 let currentSelectedLi: HTMLLIElement | null = null;
@@ -147,7 +150,7 @@ export function renderSearch(app: HTMLElement, genre: string): void {
       <h2>Search ${config.label} films</h2>
       <div class="search-row">
         <input id="search" type="text"
-          placeholder="e.g. space, zombie, cowboy, soldier, mafia, love..."
+          placeholder="e.g. space, dragon, zombie, cowboy, soldier, mafia..."
           autocomplete="off" />
         <select id="decade-filter">
           <option value="">All years</option>
