@@ -34,16 +34,7 @@ function onEscKey(e) {
 // ─── Boot ─────────────────────────────────────────────────
 const app = document.getElementById("app");
 register("/", () => renderHome(app));
-register("/search/scifi", () => renderSearch(app, "scifi"));
-register("/search/fantasy", () => renderSearch(app, "fantasy"));
-register("/search/horror", () => renderSearch(app, "horror"));
-register("/search/western", () => renderSearch(app, "western"));
-register("/search/comedy", () => renderSearch(app, "comedy"));
-register("/search/war", () => renderSearch(app, "war"));
-register("/search/crime", () => renderSearch(app, "crime"));
-register("/search/drama", () => renderSearch(app, "drama"));
-register("/search/biography", () => renderSearch(app, "biography"));
-register("/search/animation", () => renderSearch(app, "animation"));
+register("/search", () => renderSearch(app));
 register("/category/top/scifi", () => renderCategory(app, "top", "scifi"));
 register("/category/top/fantasy", () => renderCategory(app, "top", "fantasy"));
 register("/category/top/horror", () => renderCategory(app, "top", "horror"));

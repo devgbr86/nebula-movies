@@ -1,18 +1,6 @@
 import { openModal, closeModal } from "./main.js";
 const API_KEY = "trilogy";
 const BASE = "https://www.omdbapi.com/";
-const GENRE_CONFIG = {
-    scifi: { label: "Sci-Fi", apiTerm: "sci-fi" },
-    fantasy: { label: "Fantasy", apiTerm: "fantasy" },
-    horror: { label: "Horror", apiTerm: "horror" },
-    western: { label: "Western", apiTerm: "western" },
-    comedy: { label: "Comedy", apiTerm: "comedy" },
-    war: { label: "War", apiTerm: "war" },
-    crime: { label: "Crime", apiTerm: "crime" },
-    drama: { label: "Drama", apiTerm: "drama" },
-    biography: { label: "Biography", apiTerm: "biography" },
-    animation: { label: "Animation", apiTerm: "animation" },
-};
 let currentSelectedLi = null;
 function setStatus(msg, isError) {
     const el = document.getElementById("status-msg");
@@ -37,8 +25,8 @@ function renderMovieLi(movie, listEl) {
     });
     listEl.appendChild(li);
 }
-async function searchMovies(query, genreFilter) {
-    var _a, _b, _c;
+async function searchMovies(query) {
+    var _a;
     const decadeFilter = document.getElementById("decade-filter");
     const resultsEl = document.getElementById("results");
     const resultCountEl = document.getElementById("result-count");
@@ -94,50 +82,48 @@ async function searchMovies(query, genreFilter) {
             resultsEl.innerHTML = `<li class="empty-state">No results.</li>`;
             return;
         }
-        setStatus(`Filtering ${allMovies.length} results...`, false);
+        setStatus(`Loading details for ${allMovies.length} results...`, false);
         const details = await Promise.all(allMovies.map(m => fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json())));
-        const filtered = details.filter((d) => {
-            var _a;
-            if (d.Response !== "True")
-                return false;
-            if (!((_a = d.Genre) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(genreFilter)))
-                return false;
-            if (startYear && endYear) {
+        const results = details.filter(d => d.Response === "True");
+        if (startYear && endYear) {
+            const filtered = results.filter(d => {
                 const y = parseInt(d.Year);
-                if (isNaN(y) || y < startYear || y > endYear)
-                    return false;
+                return !isNaN(y) && y >= startYear && y <= endYear;
+            });
+            if (!filtered.length) {
+                setStatus("No results found for that decade.", true);
+                resultsEl.innerHTML = `<li class="empty-state">No results.</li>`;
+                resultCountEl.textContent = "";
+                return;
             }
-            return true;
-        });
-        if (!filtered.length) {
-            setStatus(`No ${(_c = (_b = GENRE_CONFIG[genreFilter]) === null || _b === void 0 ? void 0 : _b.label) !== null && _c !== void 0 ? _c : genreFilter} films found for that term.`, true);
-            resultsEl.innerHTML = `<li class="empty-state">No results.</li>`;
-            resultCountEl.textContent = "";
+            setStatus("", false);
+            resultCountEl.textContent = `${filtered.length} film${filtered.length !== 1 ? "s" : ""}`;
+            filtered.forEach(m => renderMovieLi(m, resultsEl));
             return;
         }
         setStatus("", false);
-        resultCountEl.textContent = `${filtered.length} film${filtered.length !== 1 ? "s" : ""}`;
-        filtered.forEach((m) => renderMovieLi(m, resultsEl));
+        resultCountEl.textContent = `${results.length} film${results.length !== 1 ? "s" : ""}`;
+        results.forEach(m => renderMovieLi(m, resultsEl));
     }
     catch (err) {
         console.error(err);
         setStatus("Connection error.", true);
     }
 }
-export function renderSearch(app, genre) {
-    var _a;
-    const config = (_a = GENRE_CONFIG[genre]) !== null && _a !== void 0 ? _a : { label: genre, apiTerm: genre };
-    const genreFilter = config.apiTerm;
+export function renderSearch(app) {
     currentSelectedLi = null;
     app.innerHTML = `
     <div class="search-area">
-      <h2>Search ${config.label} films</h2>
+      <h2>Search database</h2>
       <div class="search-row">
         <input id="search" type="text"
-          placeholder="e.g. space, dragon, zombie, cowboy, soldier, mafia..."
+          placeholder="e.g. Blade Runner, Godfather, Interstellar..."
           autocomplete="off" />
         <select id="decade-filter">
           <option value="">All years</option>
+          <option value="1940">1940s</option>
+          <option value="1950">1950s</option>
+          <option value="1960">1960s</option>
           <option value="1970">1970s</option>
           <option value="1980">1980s</option>
           <option value="1990">1990s</option>
@@ -154,7 +140,7 @@ export function renderSearch(app, genre) {
       <div class="ranks-col">
         <div class="results-col" id="results-col">
           <div class="results-header">
-            <h3>${config.label}</h3>
+            <h3>Results</h3>
             <span id="result-count"></span>
           </div>
           <ul id="results"></ul>
@@ -179,7 +165,7 @@ export function renderSearch(app, genre) {
             statusEl.className = "error";
             return;
         }
-        searchMovies(q, genreFilter);
+        searchMovies(q);
     }
     btnSearch.addEventListener("click", doSearch);
     searchInput.addEventListener("keydown", e => { if (e.key === "Enter")

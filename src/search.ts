@@ -4,19 +4,6 @@ import type { OMDbDetail, OMDbSearchResponse } from "./main.js";
 const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
-const GENRE_CONFIG: Record<string, { label: string; apiTerm: string }> = {
-  scifi:     { label: "Sci-Fi",    apiTerm: "sci-fi"     },
-  fantasy:   { label: "Fantasy",   apiTerm: "fantasy"    },
-  horror:    { label: "Horror",    apiTerm: "horror"     },
-  western:   { label: "Western",   apiTerm: "western"    },
-  comedy:    { label: "Comedy",    apiTerm: "comedy"     },
-  war:       { label: "War",       apiTerm: "war"        },
-  crime:     { label: "Crime",     apiTerm: "crime"      },
-  drama:     { label: "Drama",     apiTerm: "drama"      },
-  biography: { label: "Biography", apiTerm: "biography"  },
-  animation: { label: "Animation", apiTerm: "animation"  },
-};
-
 let currentSelectedLi: HTMLLIElement | null = null;
 
 function setStatus(msg: string, isError: boolean): void {
@@ -43,7 +30,7 @@ function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   listEl.appendChild(li);
 }
 
-async function searchMovies(query: string, genreFilter: string): Promise<void> {
+async function searchMovies(query: string): Promise<void> {
   const decadeFilter  = document.getElementById("decade-filter")  as HTMLSelectElement | null;
   const resultsEl     = document.getElementById("results")        as HTMLUListElement;
   const resultCountEl = document.getElementById("result-count")   as HTMLSpanElement;
@@ -104,7 +91,7 @@ async function searchMovies(query: string, genreFilter: string): Promise<void> {
       return;
     }
 
-    setStatus(`Filtering ${allMovies.length} results...`, false);
+    setStatus(`Loading details for ${allMovies.length} results...`, false);
 
     const details = await Promise.all(
       allMovies.map(m =>
@@ -112,26 +99,28 @@ async function searchMovies(query: string, genreFilter: string): Promise<void> {
       )
     );
 
-    const filtered = details.filter((d: OMDbDetail) => {
-      if (d.Response !== "True") return false;
-      if (!d.Genre?.toLowerCase().includes(genreFilter)) return false;
-      if (startYear && endYear) {
-        const y = parseInt(d.Year);
-        if (isNaN(y) || y < startYear || y > endYear) return false;
-      }
-      return true;
-    });
+    const results = details.filter(d => d.Response === "True");
 
-    if (!filtered.length) {
-      setStatus(`No ${GENRE_CONFIG[genreFilter]?.label ?? genreFilter} films found for that term.`, true);
-      resultsEl.innerHTML       = `<li class="empty-state">No results.</li>`;
-      resultCountEl.textContent = "";
+    if (startYear && endYear) {
+      const filtered = results.filter(d => {
+        const y = parseInt(d.Year);
+        return !isNaN(y) && y >= startYear && y <= endYear;
+      });
+      if (!filtered.length) {
+        setStatus("No results found for that decade.", true);
+        resultsEl.innerHTML       = `<li class="empty-state">No results.</li>`;
+        resultCountEl.textContent = "";
+        return;
+      }
+      setStatus("", false);
+      resultCountEl.textContent = `${filtered.length} film${filtered.length !== 1 ? "s" : ""}`;
+      filtered.forEach(m => renderMovieLi(m, resultsEl));
       return;
     }
 
     setStatus("", false);
-    resultCountEl.textContent = `${filtered.length} film${filtered.length !== 1 ? "s" : ""}`;
-    filtered.forEach((m: OMDbDetail) => renderMovieLi(m, resultsEl));
+    resultCountEl.textContent = `${results.length} film${results.length !== 1 ? "s" : ""}`;
+    results.forEach(m => renderMovieLi(m, resultsEl));
 
   } catch (err) {
     console.error(err);
@@ -139,21 +128,21 @@ async function searchMovies(query: string, genreFilter: string): Promise<void> {
   }
 }
 
-export function renderSearch(app: HTMLElement, genre: string): void {
-  const config      = GENRE_CONFIG[genre] ?? { label: genre, apiTerm: genre };
-  const genreFilter = config.apiTerm;
-
+export function renderSearch(app: HTMLElement): void {
   currentSelectedLi = null;
 
   app.innerHTML = `
     <div class="search-area">
-      <h2>Search ${config.label} films</h2>
+      <h2>Search database</h2>
       <div class="search-row">
         <input id="search" type="text"
-          placeholder="e.g. space, dragon, zombie, cowboy, soldier, mafia..."
+          placeholder="e.g. Blade Runner, Godfather, Interstellar..."
           autocomplete="off" />
         <select id="decade-filter">
           <option value="">All years</option>
+          <option value="1940">1940s</option>
+          <option value="1950">1950s</option>
+          <option value="1960">1960s</option>
           <option value="1970">1970s</option>
           <option value="1980">1980s</option>
           <option value="1990">1990s</option>
@@ -170,7 +159,7 @@ export function renderSearch(app: HTMLElement, genre: string): void {
       <div class="ranks-col">
         <div class="results-col" id="results-col">
           <div class="results-header">
-            <h3>${config.label}</h3>
+            <h3>Results</h3>
             <span id="result-count"></span>
           </div>
           <ul id="results"></ul>
@@ -197,7 +186,7 @@ export function renderSearch(app: HTMLElement, genre: string): void {
       statusEl.className   = "error";
       return;
     }
-    searchMovies(q, genreFilter);
+    searchMovies(q);
   }
 
   btnSearch.addEventListener("click", doSearch);

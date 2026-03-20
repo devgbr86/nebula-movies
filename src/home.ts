@@ -7,16 +7,7 @@ export function renderHome(app: HTMLElement): void {
       <div class="home-nav-section">
         <p class="home-section-label">🔍Search</p>
         <div class="home-nav-grid">
-          <button class="home-nav-btn" id="btn-search-scifi">Search Sci-Fi</button>
-          <button class="home-nav-btn" id="btn-search-fantasy">Search Fantasy</button>
-          <button class="home-nav-btn" id="btn-search-horror">Search Horror</button>
-          <button class="home-nav-btn" id="btn-search-western">Search Western</button>
-          <button class="home-nav-btn" id="btn-search-comedy">Search Comedy</button>
-          <button class="home-nav-btn" id="btn-search-war">Search War</button>
-          <button class="home-nav-btn" id="btn-search-crime">Search Crime</button>
-          <button class="home-nav-btn" id="btn-search-drama">Search Drama</button>
-          <button class="home-nav-btn" id="btn-search-biography">Search Biography</button>
-          <button class="home-nav-btn" id="btn-search-animation">Search Animation</button>
+          <button class="home-nav-btn" id="btn-search">Search database</button>
         </div>
       </div>
 
@@ -55,16 +46,7 @@ export function renderHome(app: HTMLElement): void {
     </div>
   `;
 
-  document.getElementById("btn-search-scifi")!.addEventListener("click",     () => navigate("/search/scifi"));
-  document.getElementById("btn-search-fantasy")!.addEventListener("click",   () => navigate("/search/fantasy"));
-  document.getElementById("btn-search-horror")!.addEventListener("click",    () => navigate("/search/horror"));
-  document.getElementById("btn-search-western")!.addEventListener("click",   () => navigate("/search/western"));
-  document.getElementById("btn-search-comedy")!.addEventListener("click",    () => navigate("/search/comedy"));
-  document.getElementById("btn-search-war")!.addEventListener("click",       () => navigate("/search/war"));
-  document.getElementById("btn-search-crime")!.addEventListener("click",     () => navigate("/search/crime"));
-  document.getElementById("btn-search-drama")!.addEventListener("click",     () => navigate("/search/drama"));
-  document.getElementById("btn-search-biography")!.addEventListener("click", () => navigate("/search/biography"));
-  document.getElementById("btn-search-animation")!.addEventListener("click", () => navigate("/search/animation"));
+  document.getElementById("btn-search")!.addEventListener("click", () => navigate("/search"));
 
   document.getElementById("btn-top-scifi")!.addEventListener("click",     () => navigate("/category/top/scifi"));
   document.getElementById("btn-top-fantasy")!.addEventListener("click",   () => navigate("/category/top/fantasy"));
