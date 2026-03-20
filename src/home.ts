@@ -6,7 +6,7 @@ export function renderHome(app: HTMLElement): void {
       <div class="home-nav-section">
         <p class="home-section-label">Movie Database</p>
         <div class="home-nav-grid">
-          <button class="home-nav-btn" id="btn-search">Search database</button>
+          <button class="home-nav-btn" id="btn-search">🔍 Search</button>
         </div>
         <p>Search by title, type, genre, year, and country.<br>
 Movie database powered by OMDb API technology.
