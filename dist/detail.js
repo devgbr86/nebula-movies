@@ -9,12 +9,11 @@ export function field(label, value) {
 }
 // ─── Build modal HTML ─────────────────────────────────────
 export function buildDetailHTML(movie) {
-    var _a, _b;
-    const ratings = (_b = (_a = movie.Ratings) === null || _a === void 0 ? void 0 : _a.map(r => `
+    const ratings = movie.Ratings?.map(r => `
     <div class="rating-chip">
       <span class="rating-source">${r.Source.replace("Internet Movie Database", "IMDb")}</span>
       <span class="rating-value">${r.Value}</span>
-    </div>`).join("")) !== null && _b !== void 0 ? _b : "";
+    </div>`).join("") ?? "";
     const poster = movie.Poster && movie.Poster !== "N/A"
         ? `<div class="movie-modal-poster"><img src="${movie.Poster}" alt="${movie.Title} poster"></div>`
         : `<div class="movie-modal-poster"><div class="movie-modal-poster-placeholder">No poster</div></div>`;

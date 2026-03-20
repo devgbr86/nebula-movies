@@ -477,3 +477,126 @@ footer a:hover {
           width: 100%;
      }
 }
+
+/* ── SEARCH BLOCKS ── */
+.search-block {
+     display: flex;
+     flex-direction: column;
+     gap: 0.35rem;
+     margin-bottom: 1rem;
+}
+
+.search-block--divided {
+     border-top: 1px solid #eaecf0;
+     padding-top: 1rem;
+}
+
+.search-label {
+     font-size: 0.78rem;
+     color: #54595d;
+     text-transform: uppercase;
+     letter-spacing: 0.07em;
+}
+
+.search-block input[type="text"] {
+     width: 100%;
+     padding: 0.55rem 0.75rem;
+     border: 1px solid #a2a9b1;
+     background: #fff;
+     color: #202122;
+     font-family: inherit;
+     font-size: 0.95rem;
+     outline: none;
+}
+
+.search-block input[type="text"]:focus {
+     border-color: #3366cc;
+     box-shadow: 0 0 0 1px #3366cc;
+}
+
+.search-block input[type="text"]::placeholder {
+     color: #a2a9b1;
+}
+
+.search-hint {
+     font-size: 0.78rem;
+     color: #72777d;
+     line-height: 1.5;
+     margin-top: 0.25rem;
+}
+
+/* ── FILTERS GRID ── */
+.search-filters-grid {
+     display: grid;
+     grid-template-columns: 1fr 1fr 1fr 1fr;
+     gap: 0.5rem;
+}
+
+.search-filters-grid select {
+     padding: 0.45rem 0.5rem;
+     border: 1px solid #a2a9b1;
+     background: #fff;
+     color: #202122;
+     font-family: inherit;
+     font-size: 0.88rem;
+     cursor: pointer;
+     outline: none;
+     width: 100%;
+}
+
+.search-filters-grid select:focus {
+     border-color: #3366cc;
+     box-shadow: 0 0 0 1px #3366cc;
+}
+
+/* ── SEARCH BUTTON FULL WIDTH ── */
+.btn-search--full {
+     width: 100%;
+     padding: 0.6rem 1rem;
+     font-size: 0.95rem;
+     margin-bottom: 0.25rem;
+}
+
+/* ── MEDIA QUERIES ── */
+@media (max-width: 760px) {
+     .content {
+          grid-template-columns: 1fr;
+     }
+
+     .search-filters-grid {
+          grid-template-columns: 1fr 1fr;
+     }
+}
+
+@media (max-width: 560px) {
+     .movie-modal-body {
+          grid-template-columns: 1fr;
+     }
+
+     .search-filters-grid {
+          grid-template-columns: 1fr 1fr;
+     }
+
+     .search-block input[type="text"] {
+          font-size: 1rem;
+     }
+
+     .btn-search--full {
+          padding: 0.75rem 1rem;
+          font-size: 1rem;
+     }
+}
+
+@media (max-width: 480px) {
+     .search-filters-grid {
+          grid-template-columns: 1fr;
+     }
+
+     .home-nav-btn {
+          width: 100%;
+     }
+
+     .header-inner {
+          padding: 0.5rem 1rem;
+     }
+}

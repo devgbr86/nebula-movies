@@ -3,57 +3,27 @@ const API_KEY = "trilogy";
 const BASE = "https://www.omdbapi.com/";
 const CURRENT_YEAR = new Date().getFullYear();
 const RECENT_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
-const GENRE_CONFIG = {
-    scifi: {
-        label: "Sci-Fi",
-        apiTerm: "sci-fi",
-        seeds: ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"],
-    },
-    fantasy: {
-        label: "Fantasy",
-        apiTerm: "fantasy",
-        seeds: ["fantasy", "dragon", "magic", "wizard", "quest", "hero", "mythical", "adventure"],
-    },
-    horror: {
-        label: "Horror",
-        apiTerm: "horror",
-        seeds: ["horror", "ghost", "monster", "demon", "haunted", "vampire", "zombie", "witch"],
-    },
-    western: {
-        label: "Western",
-        apiTerm: "western",
-        seeds: ["western", "cowboy", "outlaw", "sheriff", "frontier", "gunfighter", "saloon", "wild west"],
-    },
-    comedy: {
-        label: "Comedy",
-        apiTerm: "comedy",
-        seeds: ["comedy", "funny", "humor", "laugh", "sitcom", "parody", "romantic comedy", "slapstick"],
-    },
-    war: {
-        label: "War",
-        apiTerm: "war",
-        seeds: ["war", "military", "soldier", "battle", "army", "combat", "navy", "marines"],
-    },
-    crime: {
-        label: "Crime",
-        apiTerm: "crime",
-        seeds: ["crime", "mafia", "gangster", "heist", "murder", "detective", "mob", "drug"],
-    },
-    drama: {
-        label: "Drama",
-        apiTerm: "drama",
-        seeds: ["drama", "family", "life", "love", "loss", "redemption", "struggle", "true story"],
-    },
-    biography: {
-        label: "Biography",
-        apiTerm: "biography",
-        seeds: ["biography", "true story", "based on", "life of", "historical", "legend", "pioneer", "genius"],
-    },
-    animation: {
-        label: "Animation",
-        apiTerm: "animation",
-        seeds: ["animation", "animated", "pixar", "ghibli", "cartoon", "disney", "dreamworks", "anime"],
-    },
+const SCIFI_CONFIG = {
+    label: "Sci-Fi",
+    apiTerm: "sci-fi",
+    seeds: [
+        "space",
+        "alien",
+        "robot",
+        "artificial intelligence",
+        "future",
+        "interstellar",
+        "time travel",
+        "dystopia",
+        "cyberpunk",
+        "galaxy",
+        "astronaut",
+        "android",
+        "extraterrestrial",
+        "mars",
+        "spaceship",
+        "clone",
+    ],
 };
 let currentSelectedLi = null;
 function setStatus(msg, isError) {
@@ -98,14 +68,11 @@ async function collectIds(queries) {
     }
     return ids;
 }
-async function loadTop(genre, listEl, countEl) {
-    const config = GENRE_CONFIG[genre];
-    if (!config)
-        return;
-    setStatus(`Loading top ${config.label} films...`, false);
+async function loadTop(listEl, countEl) {
+    setStatus("Loading top sci-fi films...", false);
     listEl.innerHTML = "";
     try {
-        const queries = config.seeds.map(term => fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&apikey=${API_KEY}&page=1`)
+        const queries = SCIFI_CONFIG.seeds.map(term => fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&apikey=${API_KEY}&page=1`)
             .then(r => r.json()));
         const ids = await collectIds(queries);
         const details = await fetchDetails(ids);
@@ -113,7 +80,7 @@ async function loadTop(genre, listEl, countEl) {
             .filter(d => {
             var _a;
             return d.Response === "True" &&
-                ((_a = d.Genre) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(config.apiTerm)) &&
+                ((_a = d.Genre) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(SCIFI_CONFIG.apiTerm)) &&
                 d.imdbRating && d.imdbRating !== "N/A";
         })
             .sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating))
@@ -131,16 +98,13 @@ async function loadTop(genre, listEl, countEl) {
         setStatus("Connection error.", true);
     }
 }
-async function loadLatest(genre, listEl, countEl) {
-    const config = GENRE_CONFIG[genre];
-    if (!config)
-        return;
-    setStatus(`Loading latest ${config.label} films...`, false);
-    listEl.innerHTML = `<li class="empty-state"></li>`;
+async function loadLatest(listEl, countEl) {
+    setStatus("Loading latest sci-fi films...", false);
+    listEl.innerHTML = "";
     try {
         const queries = [];
         for (const year of RECENT_YEARS) {
-            for (const term of config.seeds) {
+            for (const term of SCIFI_CONFIG.seeds) {
                 queries.push(fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&y=${year}&apikey=${API_KEY}&page=1`)
                     .then(r => r.json()));
             }
@@ -151,7 +115,7 @@ async function loadLatest(genre, listEl, countEl) {
             .filter(d => {
             var _a;
             return d.Response === "True" &&
-                ((_a = d.Genre) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(config.apiTerm)) &&
+                ((_a = d.Genre) === null || _a === void 0 ? void 0 : _a.toLowerCase().includes(SCIFI_CONFIG.apiTerm)) &&
                 d.Year &&
                 parseInt(d.Year) >= CURRENT_YEAR - 2 &&
                 parseInt(d.Year) <= CURRENT_YEAR;
@@ -176,14 +140,12 @@ async function loadLatest(genre, listEl, countEl) {
         setStatus("Connection error.", true);
     }
 }
-export function renderCategory(app, mode, genre) {
-    var _a;
-    const config = (_a = GENRE_CONFIG[genre]) !== null && _a !== void 0 ? _a : { label: genre, apiTerm: genre, seeds: [] };
-    const modeLabel = mode === "top" ? "Top 10" : "Latest";
+export function renderCategory(app, mode) {
+    const modeLabel = mode === "top" ? "Top 10 Sci-Fi of all time" : "Latest Sci-Fi Movies";
     currentSelectedLi = null;
     app.innerHTML = `
     <div class="search-area">
-      <h2>${modeLabel} ${config.label}</h2>
+      <h2>${modeLabel}</h2>
       <div id="cat-status"></div>
     </div>
 
@@ -212,9 +174,9 @@ export function renderCategory(app, mode, genre) {
         document.getElementById("details-section").classList.add("hidden");
     });
     if (mode === "top") {
-        loadTop(genre, listEl, countEl);
+        loadTop(listEl, countEl);
     }
     else {
-        loadLatest(genre, listEl, countEl);
+        loadLatest(listEl, countEl);
     }
 }

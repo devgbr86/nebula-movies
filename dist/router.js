@@ -9,11 +9,10 @@ export function navigate(path) {
 }
 // ─── Internal ─────────────────────────────────────────────
 function resolve() {
-    var _a;
     const hash = location.hash.replace("#", "") || "/";
     const clean = hash.length > 1 ? hash.replace(/\/$/, "") : hash;
-    const handler = (_a = routes[clean]) !== null && _a !== void 0 ? _a : routes["/"];
-    handler === null || handler === void 0 ? void 0 : handler();
+    const handler = routes[clean] ?? routes["/"];
+    handler?.();
     updateActiveNav(clean);
 }
 function updateActiveNav(path) {
@@ -23,12 +22,11 @@ function updateActiveNav(path) {
 }
 export function initRouter() {
     document.addEventListener("click", e => {
-        var _a;
         const target = e.target.closest("[data-link]");
         if (!target)
             return;
         e.preventDefault();
-        navigate((_a = target.getAttribute("href")) !== null && _a !== void 0 ? _a : "/");
+        navigate(target.getAttribute("href") ?? "/");
     });
     window.addEventListener("hashchange", resolve);
     resolve();
