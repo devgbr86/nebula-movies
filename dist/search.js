@@ -1,15 +1,16 @@
 import { openModal, closeModal } from "./main.js";
-// ─── Constants ────────────────────────────────────────────
 const API_KEY = "trilogy";
 const BASE = "https://www.omdbapi.com/";
-// ─── Genre config ─────────────────────────────────────────
 const GENRE_CONFIG = {
     scifi: { label: "Sci-Fi", apiTerm: "sci-fi" },
-    terror: { label: "Terror", apiTerm: "horror" },
+    horror: { label: "Horror", apiTerm: "horror" },
+    western: { label: "Western", apiTerm: "western" },
+    comedy: { label: "Comedy", apiTerm: "comedy" },
+    war: { label: "War", apiTerm: "war" },
+    crime: { label: "Crime", apiTerm: "crime" },
+    drama: { label: "Drama", apiTerm: "drama" },
 };
-// ─── State ────────────────────────────────────────────────
 let currentSelectedLi = null;
-// ─── Helpers ──────────────────────────────────────────────
 function setStatus(msg, isError) {
     const el = document.getElementById("status-msg");
     if (!el)
@@ -20,8 +21,7 @@ function setStatus(msg, isError) {
 function renderMovieLi(movie, listEl) {
     const li = document.createElement("li");
     const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-        ? ` &middot; &#9733; ${movie.imdbRating}`
-        : "";
+        ? ` &middot; &#9733; ${movie.imdbRating}` : "";
     li.innerHTML = `
     <div class="movie-title">${movie.Title}</div>
     <div class="movie-meta">${movie.Year} &middot; ${movie.Runtime}${rating}</div>
@@ -34,7 +34,6 @@ function renderMovieLi(movie, listEl) {
     });
     listEl.appendChild(li);
 }
-// ─── Search logic ─────────────────────────────────────────
 async function searchMovies(query, genreFilter) {
     var _a, _b, _c;
     const decadeFilter = document.getElementById("decade-filter");
@@ -122,7 +121,6 @@ async function searchMovies(query, genreFilter) {
         setStatus("Connection error.", true);
     }
 }
-// ─── Page render ──────────────────────────────────────────
 export function renderSearch(app, genre) {
     var _a;
     const config = (_a = GENRE_CONFIG[genre]) !== null && _a !== void 0 ? _a : { label: genre, apiTerm: genre };
@@ -133,7 +131,7 @@ export function renderSearch(app, genre) {
       <h2>Search ${config.label} films</h2>
       <div class="search-row">
         <input id="search" type="text"
-          placeholder="e.g. space, robot, zombie, vampire..."
+          placeholder="e.g. space, zombie, cowboy, soldier, mafia, love..."
           autocomplete="off" />
         <select id="decade-filter">
           <option value="">All years</option>
@@ -184,8 +182,7 @@ export function renderSearch(app, genre) {
     searchInput.addEventListener("keydown", e => { if (e.key === "Enter")
         doSearch(); });
     closeBtn.addEventListener("click", () => {
-        const detailsSection = document.getElementById("details-section");
-        detailsSection.classList.add("hidden");
+        document.getElementById("details-section").classList.add("hidden");
         closeModal();
     });
 }

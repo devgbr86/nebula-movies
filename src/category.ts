@@ -1,7 +1,6 @@
 import { openModal } from "./main.js";
 import type { OMDbDetail, OMDbSearchResponse } from "./main.js";
 
-// ─── Constants ────────────────────────────────────────────
 const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
@@ -14,17 +13,40 @@ const GENRE_CONFIG: Record<string, { label: string; apiTerm: string; seeds: stri
     apiTerm: "sci-fi",
     seeds:   ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"],
   },
-  terror: {
-    label:   "Terror",
+  horror: {
+    label:   "Horror",
     apiTerm: "horror",
     seeds:   ["horror", "ghost", "monster", "demon", "haunted", "vampire", "zombie", "witch"],
   },
+  western: {
+    label:   "Western",
+    apiTerm: "western",
+    seeds:   ["western", "cowboy", "outlaw", "sheriff", "frontier", "gunfighter", "saloon", "wild west"],
+  },
+  comedy: {
+    label:   "Comedy",
+    apiTerm: "comedy",
+    seeds:   ["comedy", "funny", "humor", "laugh", "sitcom", "parody", "romantic comedy", "slapstick"],
+  },
+  war: {
+    label:   "War",
+    apiTerm: "war",
+    seeds:   ["war", "military", "soldier", "battle", "army", "combat", "navy", "marines"],
+  },
+  crime: {
+    label:   "Crime",
+    apiTerm: "crime",
+    seeds:   ["crime", "mafia", "gangster", "heist", "murder", "detective", "mob", "drug"],
+  },
+  drama: {
+    label:   "Drama",
+    apiTerm: "drama",
+    seeds:   ["drama", "family", "life", "love", "loss", "redemption", "struggle", "true story"],
+  },
 };
 
-// ─── State ────────────────────────────────────────────────
 let currentSelectedLi: HTMLLIElement | null = null;
 
-// ─── Helpers ──────────────────────────────────────────────
 function setStatus(msg: string, isError: boolean): void {
   const el = document.getElementById("cat-status") as HTMLDivElement | null;
   if (!el) return;
@@ -35,8 +57,7 @@ function setStatus(msg: string, isError: boolean): void {
 function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   const li     = document.createElement("li");
   const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-    ? ` &middot; &#9733; ${movie.imdbRating}`
-    : "";
+    ? ` &middot; &#9733; ${movie.imdbRating}` : "";
   li.innerHTML = `
     <div class="movie-title">${movie.Title}</div>
     <div class="movie-meta">${movie.Year} &middot; ${movie.Runtime}${rating}</div>
@@ -50,7 +71,6 @@ function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   listEl.appendChild(li);
 }
 
-// ─── Fetch helpers ────────────────────────────────────────
 async function fetchDetails(ids: string[]): Promise<OMDbDetail[]> {
   return Promise.all(
     ids.map(id =>
@@ -60,8 +80,8 @@ async function fetchDetails(ids: string[]): Promise<OMDbDetail[]> {
 }
 
 async function collectIds(queries: Promise<OMDbSearchResponse>[]): Promise<string[]> {
-  const results  = await Promise.all(queries);
-  const seenIds  = new Set<string>();
+  const results = await Promise.all(queries);
+  const seenIds = new Set<string>();
   const ids: string[] = [];
   for (const data of results) {
     if (data.Search) {
@@ -73,7 +93,6 @@ async function collectIds(queries: Promise<OMDbSearchResponse>[]): Promise<strin
   return ids;
 }
 
-// ─── Top 10 ───────────────────────────────────────────────
 async function loadTop(genre: string, listEl: HTMLUListElement, countEl: HTMLSpanElement): Promise<void> {
   const config = GENRE_CONFIG[genre];
   if (!config) return;
@@ -115,7 +134,6 @@ async function loadTop(genre: string, listEl: HTMLUListElement, countEl: HTMLSpa
   }
 }
 
-// ─── Latest ───────────────────────────────────────────────
 async function loadLatest(genre: string, listEl: HTMLUListElement, countEl: HTMLSpanElement): Promise<void> {
   const config = GENRE_CONFIG[genre];
   if (!config) return;
@@ -168,7 +186,6 @@ async function loadLatest(genre: string, listEl: HTMLUListElement, countEl: HTML
   }
 }
 
-// ─── Page render ──────────────────────────────────────────
 export function renderCategory(app: HTMLElement, mode: "top" | "latest", genre: string): void {
   const config    = GENRE_CONFIG[genre] ?? { label: genre, apiTerm: genre, seeds: [] };
   const modeLabel = mode === "top" ? "Top 10" : "Latest";
@@ -200,13 +217,12 @@ export function renderCategory(app: HTMLElement, mode: "top" | "latest", genre: 
     </div>
   `;
 
-  const listEl  = document.getElementById("cat-results") as HTMLUListElement;
-  const countEl = document.getElementById("cat-count")   as HTMLSpanElement;
+  const listEl   = document.getElementById("cat-results") as HTMLUListElement;
+  const countEl  = document.getElementById("cat-count")   as HTMLSpanElement;
   const closeBtn = document.getElementById("close-details") as HTMLButtonElement;
 
   closeBtn.addEventListener("click", () => {
-    const detailsSection = document.getElementById("details-section") as HTMLDivElement;
-    detailsSection.classList.add("hidden");
+    (document.getElementById("details-section") as HTMLDivElement).classList.add("hidden");
   });
 
   if (mode === "top") {

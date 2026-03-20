@@ -1,20 +1,21 @@
 import { openModal, closeModal } from "./main.js";
 import type { OMDbDetail, OMDbSearchResponse } from "./main.js";
 
-// ─── Constants ────────────────────────────────────────────
 const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
-// ─── Genre config ─────────────────────────────────────────
 const GENRE_CONFIG: Record<string, { label: string; apiTerm: string }> = {
-  scifi:  { label: "Sci-Fi",  apiTerm: "sci-fi"  },
-  terror: { label: "Terror",  apiTerm: "horror"  },
+  scifi:   { label: "Sci-Fi",  apiTerm: "sci-fi"  },
+  horror:  { label: "Horror",  apiTerm: "horror"  },
+  western: { label: "Western", apiTerm: "western" },
+  comedy:  { label: "Comedy",  apiTerm: "comedy"  },
+  war:     { label: "War",     apiTerm: "war"      },
+  crime:   { label: "Crime",   apiTerm: "crime"    },
+  drama:   { label: "Drama",   apiTerm: "drama"    },
 };
 
-// ─── State ────────────────────────────────────────────────
 let currentSelectedLi: HTMLLIElement | null = null;
 
-// ─── Helpers ──────────────────────────────────────────────
 function setStatus(msg: string, isError: boolean): void {
   const el = document.getElementById("status-msg") as HTMLDivElement | null;
   if (!el) return;
@@ -25,8 +26,7 @@ function setStatus(msg: string, isError: boolean): void {
 function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   const li     = document.createElement("li");
   const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-    ? ` &middot; &#9733; ${movie.imdbRating}`
-    : "";
+    ? ` &middot; &#9733; ${movie.imdbRating}` : "";
   li.innerHTML = `
     <div class="movie-title">${movie.Title}</div>
     <div class="movie-meta">${movie.Year} &middot; ${movie.Runtime}${rating}</div>
@@ -40,7 +40,6 @@ function renderMovieLi(movie: OMDbDetail, listEl: HTMLUListElement): void {
   listEl.appendChild(li);
 }
 
-// ─── Search logic ─────────────────────────────────────────
 async function searchMovies(query: string, genreFilter: string): Promise<void> {
   const decadeFilter  = document.getElementById("decade-filter")  as HTMLSelectElement | null;
   const resultsEl     = document.getElementById("results")        as HTMLUListElement;
@@ -77,7 +76,6 @@ async function searchMovies(query: string, genreFilter: string): Promise<void> {
       for (const m of data1.Search) {
         if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m); }
       }
-
       const total = Math.min(parseInt(data1.totalResults ?? "0"), 50);
       const pages = Math.ceil(total / 10);
       if (pages > 1) {
@@ -138,9 +136,8 @@ async function searchMovies(query: string, genreFilter: string): Promise<void> {
   }
 }
 
-// ─── Page render ──────────────────────────────────────────
 export function renderSearch(app: HTMLElement, genre: string): void {
-  const config     = GENRE_CONFIG[genre] ?? { label: genre, apiTerm: genre };
+  const config      = GENRE_CONFIG[genre] ?? { label: genre, apiTerm: genre };
   const genreFilter = config.apiTerm;
 
   currentSelectedLi = null;
@@ -150,7 +147,7 @@ export function renderSearch(app: HTMLElement, genre: string): void {
       <h2>Search ${config.label} films</h2>
       <div class="search-row">
         <input id="search" type="text"
-          placeholder="e.g. space, robot, zombie, vampire..."
+          placeholder="e.g. space, zombie, cowboy, soldier, mafia, love..."
           autocomplete="off" />
         <select id="decade-filter">
           <option value="">All years</option>
@@ -203,8 +200,7 @@ export function renderSearch(app: HTMLElement, genre: string): void {
   btnSearch.addEventListener("click", doSearch);
   searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
   closeBtn.addEventListener("click", () => {
-    const detailsSection = document.getElementById("details-section") as HTMLDivElement;
-    detailsSection.classList.add("hidden");
+    (document.getElementById("details-section") as HTMLDivElement).classList.add("hidden");
     closeModal();
   });
 }

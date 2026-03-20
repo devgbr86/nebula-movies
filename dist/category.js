@@ -1,5 +1,4 @@
 import { openModal } from "./main.js";
-// ─── Constants ────────────────────────────────────────────
 const API_KEY = "trilogy";
 const BASE = "https://www.omdbapi.com/";
 const CURRENT_YEAR = new Date().getFullYear();
@@ -10,15 +9,38 @@ const GENRE_CONFIG = {
         apiTerm: "sci-fi",
         seeds: ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"],
     },
-    terror: {
-        label: "Terror",
+    horror: {
+        label: "Horror",
         apiTerm: "horror",
         seeds: ["horror", "ghost", "monster", "demon", "haunted", "vampire", "zombie", "witch"],
     },
+    western: {
+        label: "Western",
+        apiTerm: "western",
+        seeds: ["western", "cowboy", "outlaw", "sheriff", "frontier", "gunfighter", "saloon", "wild west"],
+    },
+    comedy: {
+        label: "Comedy",
+        apiTerm: "comedy",
+        seeds: ["comedy", "funny", "humor", "laugh", "sitcom", "parody", "romantic comedy", "slapstick"],
+    },
+    war: {
+        label: "War",
+        apiTerm: "war",
+        seeds: ["war", "military", "soldier", "battle", "army", "combat", "navy", "marines"],
+    },
+    crime: {
+        label: "Crime",
+        apiTerm: "crime",
+        seeds: ["crime", "mafia", "gangster", "heist", "murder", "detective", "mob", "drug"],
+    },
+    drama: {
+        label: "Drama",
+        apiTerm: "drama",
+        seeds: ["drama", "family", "life", "love", "loss", "redemption", "struggle", "true story"],
+    },
 };
-// ─── State ────────────────────────────────────────────────
 let currentSelectedLi = null;
-// ─── Helpers ──────────────────────────────────────────────
 function setStatus(msg, isError) {
     const el = document.getElementById("cat-status");
     if (!el)
@@ -29,8 +51,7 @@ function setStatus(msg, isError) {
 function renderMovieLi(movie, listEl) {
     const li = document.createElement("li");
     const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-        ? ` &middot; &#9733; ${movie.imdbRating}`
-        : "";
+        ? ` &middot; &#9733; ${movie.imdbRating}` : "";
     li.innerHTML = `
     <div class="movie-title">${movie.Title}</div>
     <div class="movie-meta">${movie.Year} &middot; ${movie.Runtime}${rating}</div>
@@ -43,7 +64,6 @@ function renderMovieLi(movie, listEl) {
     });
     listEl.appendChild(li);
 }
-// ─── Fetch helpers ────────────────────────────────────────
 async function fetchDetails(ids) {
     return Promise.all(ids.map(id => fetch(`${BASE}?i=${id}&apikey=${API_KEY}&plot=full`).then(r => r.json())));
 }
@@ -63,7 +83,6 @@ async function collectIds(queries) {
     }
     return ids;
 }
-// ─── Top 10 ───────────────────────────────────────────────
 async function loadTop(genre, listEl, countEl) {
     const config = GENRE_CONFIG[genre];
     if (!config)
@@ -97,7 +116,6 @@ async function loadTop(genre, listEl, countEl) {
         setStatus("Connection error.", true);
     }
 }
-// ─── Latest ───────────────────────────────────────────────
 async function loadLatest(genre, listEl, countEl) {
     const config = GENRE_CONFIG[genre];
     if (!config)
@@ -143,7 +161,6 @@ async function loadLatest(genre, listEl, countEl) {
         setStatus("Connection error.", true);
     }
 }
-// ─── Page render ──────────────────────────────────────────
 export function renderCategory(app, mode, genre) {
     var _a;
     const config = (_a = GENRE_CONFIG[genre]) !== null && _a !== void 0 ? _a : { label: genre, apiTerm: genre, seeds: [] };
@@ -177,8 +194,7 @@ export function renderCategory(app, mode, genre) {
     const countEl = document.getElementById("cat-count");
     const closeBtn = document.getElementById("close-details");
     closeBtn.addEventListener("click", () => {
-        const detailsSection = document.getElementById("details-section");
-        detailsSection.classList.add("hidden");
+        document.getElementById("details-section").classList.add("hidden");
     });
     if (mode === "top") {
         loadTop(genre, listEl, countEl);
